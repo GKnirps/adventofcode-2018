@@ -18,6 +18,12 @@ fn main() -> Result<(), String> {
         twos * threes
     );
 
+    if let Some(id) = matching_ids(&lines) {
+        println!("ID {} is the match", &id);
+    } else {
+        println!("Apparently, no IDs match.");
+    }
+
     Ok(())
 }
 
@@ -64,6 +70,39 @@ fn count_letters(id: &str) -> HashMap<char, u64> {
     return result;
 }
 
+fn strings_differ_by_one(a: &str, b: &str) -> Option<String> {
+    if a.len() != b.len() {
+        return None;
+    }
+    let diff = a
+        .chars()
+        .zip(b.chars())
+        .filter(|(left, right)| left != right)
+        .count();
+    return if diff != 1 {
+        None
+    } else {
+        Some(
+            a.chars()
+                .zip(b.chars())
+                .filter(|(left, right)| left == right)
+                .map(|(l, _)| l)
+                .collect(),
+        )
+    };
+}
+
+fn matching_ids(ids: &[&str]) -> Option<String> {
+    for i in 0..(ids.len() - 1) {
+        for j in (i + 1)..ids.len() {
+            if let Some(id) = strings_differ_by_one(ids[i], ids[j]) {
+                return Some(id);
+            }
+        }
+    }
+    return None;
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -105,5 +144,41 @@ mod test {
         // then
         assert_eq!(twos, 4);
         assert_eq!(threes, 3);
+    }
+
+    #[test]
+    fn strings_differ_by_one_works_correctly() {
+        assert_eq!(
+            strings_differ_by_one("foobar", "foocar"),
+            Some("fooar".to_owned())
+        );
+        assert_eq!(strings_differ_by_one("abcde", "axcye"), None);
+        assert_eq!(strings_differ_by_one("abcde", "abcdef"), None);
+    }
+
+    #[test]
+    fn matching_ids_finds_matching_ids() {
+        // given
+        let ids = [
+            "abcde", "fghij", "klmno", "pqrst", "fguij", "axcye", "wvxyz",
+        ];
+
+        // when
+        let result = matching_ids(&ids).unwrap();
+
+        // then
+        assert_eq!(&result, "fgij");
+    }
+
+    #[test]
+    fn matching_ids_returns_none_for_no_matching_ids() {
+        // given
+        let ids = ["abcde", "fghij", "klmno", "pqrst", "axcye", "wvxyz"];
+
+        // when
+        let result = matching_ids(&ids);
+
+        // then
+        assert!(result.is_none());
     }
 }
