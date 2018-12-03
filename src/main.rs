@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate lazy_static;
 use regex::Regex;
+use std::collections::HashSet;
 use std::env;
 use std::fs::File;
 use std::io::{BufReader, Read};
@@ -25,7 +26,7 @@ fn required_size(claims: &[Claim]) -> Option<(usize, usize)> {
 struct Fabric {
     sx: usize,
     sy: usize,
-    area: Vec<u64>,
+    area: Vec<Vec<u64>>,
 }
 
 impl Fabric {
@@ -33,24 +34,35 @@ impl Fabric {
         Fabric {
             sx,
             sy,
-            area: (0..(sx * sy)).map(|_| 0).collect(),
+            area: (0..(sx * sy)).map(|_| Vec::new()).collect(),
         }
     }
-    fn claim(&mut self, x: usize, y: usize) {
+    fn claim(&mut self, claim_id: u64, x: usize, y: usize) {
         // no timez for da stability!
-        self.area[x + y * self.sx] += 1;
+        self.area[x + y * self.sx].push(claim_id);
     }
     fn process_claims(&mut self, claims: &[Claim]) {
         for claim in claims {
             for x in claim.px..(claim.px + claim.sx) {
                 for y in claim.py..(claim.py + claim.sy) {
-                    self.claim(x, y);
+                    self.claim(claim.id, x, y);
                 }
             }
         }
     }
     fn count_double_claimed(&self) -> usize {
-        self.area.iter().filter(|b| b > &&1).count()
+        self.area.iter().filter(|b| b.len() > 1).count()
+    }
+    fn find_non_overlapping_claims(&self, claims: &[Claim]) -> HashSet<u64> {
+        let mut ids: HashSet<u64> = claims.iter().map(|c| c.id).collect();
+        for cell in &self.area {
+            if cell.len() > 1 {
+                for id in cell {
+                    ids.remove(&id);
+                }
+            }
+        }
+        return ids;
     }
 }
 
@@ -69,6 +81,15 @@ fn main() -> Result<(), String> {
     let double_count = fabric.count_double_claimed();
 
     println!("{} squares are claimed at least twice", double_count);
+
+    let non_overlapping = fabric.find_non_overlapping_claims(&claims);
+    println!(
+        "Number of non-Overlapping claims: {}",
+        non_overlapping.len()
+    );
+    for id in non_overlapping {
+        println!("{}", id);
+    }
 
     Ok(())
 }
