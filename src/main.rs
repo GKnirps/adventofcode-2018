@@ -36,6 +36,24 @@ fn main() -> Result<(), String> {
         *sleepiest_guard.0 as usize * sleepiest_minute.0
     );
 
+    let sleepiest_minute_guard = sleep_times
+        .iter()
+        .filter_map(|(id, sheet)| {
+            sheet
+                .iter()
+                .enumerate()
+                .max_by_key(|(_, times)| times.clone())
+                .map(|(minute, times)| (id, sheet, minute, times))
+        })
+        .max_by_key(|(_, _, _, times)| times.clone())
+        .ok_or_else(|| "No guards!".to_owned())?;
+    println!(
+        "Guard {} sleeps most often in minute {}. Puzzle 2 result: {}",
+        sleepiest_minute_guard.0,
+        sleepiest_minute_guard.2,
+        *sleepiest_minute_guard.0 as usize * sleepiest_minute_guard.2
+    );
+
     Ok(())
 }
 
