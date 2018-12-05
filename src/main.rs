@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::env;
 use std::fs::File;
 use std::io::{BufReader, Read};
@@ -6,13 +7,27 @@ use std::path::Path;
 fn main() -> Result<(), String> {
     let filename = env::args().nth(1).ok_or("No file name given.".to_owned())?;
     let content = read_file(&Path::new(&filename)).map_err(|e| e.to_string())?;
+    let trimmed = content.trim();
 
-    let reacted = react_polymer(content.trim());
+    let reacted = react_polymer(trimmed, None);
 
     println!(
         "After reacting, the polymer has a length of {} units",
         reacted.chars().count()
     );
+
+    let units = available_units(trimmed);
+
+    let shortest = units
+        .iter()
+        .map(|unit| react_polymer(trimmed, Some(*unit)).chars().count())
+        .min();
+    if let Some(length) = shortest {
+        println!(
+            "After removing one unit type, the shortest reacted polymer has a length of {}.",
+            length
+        );
+    }
 
     Ok(())
 }
@@ -25,9 +40,17 @@ fn read_file(path: &Path) -> std::io::Result<String> {
     return Ok(result);
 }
 
-fn react_polymer(pol: &str) -> String {
+fn available_units(pol: &str) -> HashSet<char> {
+    pol.chars().map(|c| c.to_ascii_lowercase()).collect()
+}
+
+fn react_polymer(pol: &str, filter_element: Option<char>) -> String {
     let mut stack: Vec<char> = Vec::with_capacity(pol.len());
-    for c in pol.chars() {
+    for c in pol.chars().filter(|c| {
+        filter_element
+            .map(|f| c.to_ascii_lowercase() != f)
+            .unwrap_or(true)
+    }) {
         if chars_match(stack.last().map(|c| c.clone()), c) {
             stack.pop();
         } else {
@@ -56,7 +79,7 @@ mod test {
         let input = "dabAcCaCBAcCcaDA";
 
         // when
-        let result = react_polymer(input);
+        let result = react_polymer(input, None);
 
         // then
         assert_eq!(&result, "dabCBAcaDA");
