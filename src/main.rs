@@ -36,9 +36,6 @@ fn main() -> Result<(), String> {
     Ok(())
 }
 
-// this is rather inefficient, as I have to cover a region with about 4 billion cells
-// I probably should have started from the inside and gone outside until I reached a limit
-// maybe some other day...
 fn area_with_max_distance_sum(coords_param: &[Coord], max_distance: usize) -> usize {
     // Great: I have usize everywhere, but we may need negative numbers here
     // because I will never need this code again, I can just shift all the coordinates instead...
@@ -49,36 +46,35 @@ fn area_with_max_distance_sum(coords_param: &[Coord], max_distance: usize) -> us
             y: coord.y + max_distance,
         })
         .collect();
-    if coords.len() == 0 {
-        return 0;
-    }
-    // I know this unwrap is dirty, but I'm tired and I will never use this code again
-    let upper_x = coords.iter().min_by_key(|c| c.x.clone()).unwrap().x + max_distance;
-    let upper_y = coords.iter().min_by_key(|c| c.y.clone()).unwrap().y + max_distance;
-    let lower_x = coords.iter().max_by_key(|c| c.x.clone()).unwrap().x - max_distance;
-    let lower_y = coords.iter().max_by_key(|c| c.y.clone()).unwrap().y - max_distance;
+    let mut stack: Vec<Coord> = Vec::with_capacity(1024);
+    stack.extend_from_slice(&coords);
+    let mut visited: HashSet<Coord> = HashSet::with_capacity(1024);
 
-    println!(
-        "Lower bounds: {}×{}, upper bounds: {}×{}",
-        lower_x, lower_y, upper_x, upper_y
-    );
-    if lower_x >= upper_x || lower_y >= upper_y {
-        return 0;
-    }
-    let mut count = 0;
-    for y in lower_y..upper_y {
-        for x in lower_x..upper_x {
-            let location = Coord { x, y };
-            let total_distance: usize = coords
-                .iter()
-                .map(|c| manhattan_distance(c, &location))
-                .sum();
+    while let Some(coord) = stack.pop() {
+        if !visited.contains(&coord) {
+            let total_distance: usize = coords.iter().map(|c| manhattan_distance(c, &coord)).sum();
             if total_distance < max_distance {
-                count += 1;
+                stack.push(Coord {
+                    x: coord.x - 1,
+                    y: coord.y,
+                });
+                stack.push(Coord {
+                    x: coord.x + 1,
+                    y: coord.y,
+                });
+                stack.push(Coord {
+                    x: coord.x,
+                    y: coord.y - 1,
+                });
+                stack.push(Coord {
+                    x: coord.x,
+                    y: coord.y + 1,
+                });
+                visited.insert(coord);
             }
         }
     }
-    return count;
+    return visited.len();
 }
 
 fn manhattan_distance(p1: &Coord, p2: &Coord) -> usize {
