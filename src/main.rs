@@ -30,7 +30,69 @@ fn main() -> Result<(), String> {
         println!("There are no finite areas");
     }
 
+    let puzzle2_area = area_with_max_distance_sum(&coords, 10000);
+    println!("Solution for puzzle 2: {}", puzzle2_area);
+
     Ok(())
+}
+
+// this is rather inefficient, as I have to cover a region with about 4 billion cells
+// I probably should have started from the inside and gone outside until I reached a limit
+// maybe some other day...
+fn area_with_max_distance_sum(coords_param: &[Coord], max_distance: usize) -> usize {
+    // Great: I have usize everywhere, but we may need negative numbers here
+    // because I will never need this code again, I can just shift all the coordinates instead...
+    let coords: Vec<Coord> = coords_param
+        .iter()
+        .map(|coord| Coord {
+            x: coord.x + max_distance,
+            y: coord.y + max_distance,
+        })
+        .collect();
+    if coords.len() == 0 {
+        return 0;
+    }
+    // I know this unwrap is dirty, but I'm tired and I will never use this code again
+    let upper_x = coords.iter().min_by_key(|c| c.x.clone()).unwrap().x + max_distance;
+    let upper_y = coords.iter().min_by_key(|c| c.y.clone()).unwrap().y + max_distance;
+    let lower_x = coords.iter().max_by_key(|c| c.x.clone()).unwrap().x - max_distance;
+    let lower_y = coords.iter().max_by_key(|c| c.y.clone()).unwrap().y - max_distance;
+
+    println!(
+        "Lower bounds: {}×{}, upper bounds: {}×{}",
+        lower_x, lower_y, upper_x, upper_y
+    );
+    if lower_x >= upper_x || lower_y >= upper_y {
+        return 0;
+    }
+    let mut count = 0;
+    for y in lower_y..upper_y {
+        for x in lower_x..upper_x {
+            let location = Coord { x, y };
+            let total_distance: usize = coords
+                .iter()
+                .map(|c| manhattan_distance(c, &location))
+                .sum();
+            if total_distance < max_distance {
+                count += 1;
+            }
+        }
+    }
+    return count;
+}
+
+fn manhattan_distance(p1: &Coord, p2: &Coord) -> usize {
+    let dist_x = if p1.x > p2.x {
+        p1.x - p2.x
+    } else {
+        p2.x - p1.x
+    };
+    let dist_y = if p1.y > p2.y {
+        p1.y - p2.y
+    } else {
+        p2.y - p1.y
+    };
+    return dist_x + dist_y;
 }
 
 fn calc_area_sizes(world: &World, n_areas: usize) -> Vec<u32> {
@@ -205,7 +267,43 @@ mod test {
     use super::*;
 
     #[test]
-    fn check_example() {
+    fn manhattan_distance_works_correctly() {
+        assert_eq!(
+            manhattan_distance(&Coord { x: 0, y: 1 }, &Coord { x: 0, y: 1 }),
+            0
+        );
+        assert_eq!(
+            manhattan_distance(&Coord { x: 10, y: 100 }, &Coord { x: 20, y: 200 }),
+            110
+        );
+        assert_eq!(
+            manhattan_distance(&Coord { x: 20, y: 200 }, &Coord { x: 10, y: 100 }),
+            110
+        );
+    }
+
+    #[test]
+    fn check_example_puzzle_2() {
+        // given
+        let coords = [
+            Coord { x: 1, y: 1 },
+            Coord { x: 1, y: 6 },
+            Coord { x: 8, y: 3 },
+            Coord { x: 3, y: 4 },
+            Coord { x: 5, y: 5 },
+            Coord { x: 8, y: 9 },
+        ];
+        let max_distance: usize = 32;
+
+        // when
+        let result = area_with_max_distance_sum(&coords, max_distance);
+
+        // then
+        assert_eq!(result, 16);
+    }
+
+    #[test]
+    fn check_example_puzzle_1() {
         // given
         let coords = [
             Coord { x: 1, y: 1 },
