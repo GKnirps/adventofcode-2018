@@ -13,32 +13,95 @@ fn main() -> Result<(), String> {
     let lines: Vec<&str> = content.split('\n').collect();
 
     let inverse_dag = parse_inverse_dag(&lines);
-    let opt_ordered_nodes = order_nodes(&inverse_dag);
+    let opt_ordered_nodes = work_on_nodes(&inverse_dag, 1);
 
     if let Some(ordered_nodes) = opt_ordered_nodes {
         println!(
             "The correct order is: {}",
-            ordered_nodes.iter().collect::<String>()
+            ordered_nodes.0.iter().collect::<String>()
         );
     } else {
         println!("Apparently, the graph is not a fully connected DAG.");
     }
 
+    let opt_parallel_result = work_on_nodes(&inverse_dag, 5);
+
+    if let Some(parallel_result) = opt_parallel_result {
+        println!("With four helping elves, it takes {} seconds. The steps have been finished in order {}", parallel_result.1, parallel_result.0.iter().collect::<String>());
+    } else {
+        println!("With four helping elves, everything ended in chaos.");
+    }
+
     Ok(())
 }
 
-fn order_nodes(inv_dag: &HashMap<char, Vec<char>>) -> Option<Vec<char>> {
+fn time(node: char) -> u32 {
+    61 + (node.to_ascii_uppercase() as u32 - 'A' as u32)
+}
+
+fn work_on_nodes(inv_dag: &HashMap<char, Vec<char>>, n_workers: usize) -> Option<(Vec<char>, u32)> {
     let mut result: Vec<char> = Vec::with_capacity(inv_dag.len());
+    let mut workers: Vec<Option<(char, u32)>> = (0..n_workers).map(|_| None).collect();
+    let mut used_time: u32 = 0;
+
     while result.len() < inv_dag.len() {
-        let min_independent_node = inv_dag
+        // give available jobs to free workers
+        for i in 0..workers.len() {
+            if workers[i].is_none() {
+                if let Some(min_independent_node) = get_next_node(&inv_dag, &result, &workers) {
+                    workers[i] = Some((min_independent_node, time(min_independent_node)));
+                } else {
+                    break;
+                }
+            }
+        }
+        // minimum time to wait until at least one worker finishes
+        let wait_time = workers.iter().filter_map(|w| w.map(|(_, t)| t)).min()?;
+
+        // update required time
+        workers = workers
             .iter()
-            .filter(|(dependant, dependencies)| {
-                !result.contains(dependant) && dependencies.iter().all(|dep| result.contains(&dep))
+            .map(|worker| worker.map(|(node, t)| (node, t - wait_time)))
+            .collect();
+        used_time += wait_time;
+
+        // mark finished jobs
+        for (node, _) in workers
+            .iter()
+            .filter_map(|w| w.clone())
+            .filter(|(_, t)| *t == 0)
+        {
+            result.push(node);
+        }
+        // remove finished jobs from workers
+        workers = workers
+            .iter()
+            .map(|w| {
+                w.and_then(|(node, time)| return if time == 0 { None } else { Some((node, time)) })
             })
-            .min_by_key(|(dependant, _)| dependant.clone())?;
-        result.push(*min_independent_node.0)
+            .collect();
     }
-    return Some(result);
+
+    return Some((result, used_time));
+}
+
+fn get_next_node(
+    inv_dag: &HashMap<char, Vec<char>>,
+    finished_jobs: &[char],
+    workers: &[Option<(char, u32)>],
+) -> Option<char> {
+    inv_dag
+        .iter()
+        .filter(|(dependant, dependencies)| {
+            !finished_jobs.contains(dependant)
+                && !workers
+                    .iter()
+                    .filter_map(|w| w.clone())
+                    .any(|(node, _)| node == **dependant)
+                && dependencies.iter().all(|dep| finished_jobs.contains(&dep))
+        })
+        .min_by_key(|(dependant, _)| dependant.clone())
+        .map(|(d, _)| *d)
 }
 
 fn read_file(path: &Path) -> std::io::Result<String> {
@@ -93,15 +156,15 @@ mod test {
     ];
 
     #[test]
-    fn order_nodes_works_for_example() {
+    fn work_on_nodes_works_for_example() {
         // given
         let dag = parse_inverse_dag(&EXAMPLE_LINES);
 
         // when
-        let result = order_nodes(&dag);
+        let result = work_on_nodes(&dag, 1).expect("expected a result");
 
         // then
-        assert_eq!(result, Some(vec!['C', 'A', 'B', 'D', 'F', 'E']))
+        assert_eq!(result.0, vec!['C', 'A', 'B', 'D', 'F', 'E'])
     }
 
     #[test]
