@@ -13,8 +13,10 @@ fn main() -> Result<(), String> {
     let tree = read_tree(&mut number_input)?;
 
     let metadata_sum = sum_metadata(&tree);
-
     println!("The sum of all metadata is {}", metadata_sum);
+
+    let root_value = node_value(&tree);
+    println!("The value of the root node is {}", root_value);
 
     Ok(())
 }
@@ -24,6 +26,30 @@ fn sum_metadata(tree: &Node) -> usize {
     let children_metadata_sum: usize = tree.children.iter().map(|child| sum_metadata(child)).sum();
 
     return metadata_sum + children_metadata_sum;
+}
+
+fn node_value(node: &Node) -> usize {
+    if node.children.len() == 0 {
+        return node.metadata.iter().sum();
+    }
+    // Prof. Simon: "Rekursion kann töricht sein"
+    let mut lookup_children: Vec<Option<usize>> = (0..node.children.len()).map(|_| None).collect();
+    let mut sum: usize = 0;
+    for index in node
+        .metadata
+        .iter()
+        .filter(|i| **i <= node.children.len() && **i > 0)
+        .map(|i| i - 1)
+    {
+        if let Some(child_value) = lookup_children[index] {
+            sum += child_value;
+        } else {
+            let child_value = node_value(&node.children[index]);
+            lookup_children[index] = Some(child_value);
+            sum += child_value;
+        }
+    }
+    return sum;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -103,5 +129,18 @@ mod test {
 
         // then
         assert_eq!(sum, 138);
+    }
+
+    #[test]
+    fn node_value_should_work_for_example() {
+        // given
+        let mut input = EXAMPLE_INPUT.iter().map(|u| *u);
+        let tree = read_tree(&mut input).unwrap();
+
+        // when
+        let value = node_value(&tree);
+
+        // then
+        assert_eq!(value, 66);
     }
 }
