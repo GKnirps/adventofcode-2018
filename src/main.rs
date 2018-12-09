@@ -1,3 +1,5 @@
+mod circle;
+
 fn main() -> Result<(), String> {
     // hardcode the input here, no need to read it from file
     let n_players: usize = 430;
