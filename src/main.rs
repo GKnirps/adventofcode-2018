@@ -1,5 +1,7 @@
 mod circle;
 
+use self::circle::CircularList;
+
 fn main() -> Result<(), String> {
     // hardcode the input here, no need to read it from file
     let n_players: usize = 430;
@@ -38,8 +40,7 @@ fn play_game(n_players: usize, n_marbles: usize) -> Vec<usize> {
 
 struct State {
     n_players: usize,
-    circle: Vec<usize>,
-    current_marble: usize,
+    circle: CircularList<usize>,
     current_player: usize,
     points: Vec<usize>,
     next_marble: usize,
@@ -47,13 +48,11 @@ struct State {
 
 impl State {
     fn new(n_players: usize, n_marbles: usize) -> State {
-        let mut circle: Vec<usize> = Vec::with_capacity(n_marbles);
-        circle.push(0);
+        let circle: CircularList<usize> = CircularList::with_capacity(n_marbles, 0);
         let points: Vec<usize> = (0..n_players).map(|_| 0).collect();
         State {
             n_players,
-            circle: circle,
-            current_marble: 0,
+            circle,
             current_player: 0,
             points,
             next_marble: 1,
@@ -61,22 +60,19 @@ impl State {
     }
 
     fn turn(mut self) -> State {
-        let next_current_marble = if self.next_marble % 23 != 0 {
-            let pos = (self.current_marble + 2) % self.circle.len();
-            self.circle.insert(pos, self.next_marble);
-            pos
+        if self.next_marble % 23 != 0 {
+            self.circle.move_right();
+            self.circle.insert_right(self.next_marble);
+            self.circle.move_right();
         } else {
             self.points[self.current_player] += self.next_marble;
-            let pos_remove = (self.current_marble + self.circle.len() - 7) % self.circle.len();
-            let removed_value = self.circle.remove(pos_remove);
-            self.points[self.current_player] += removed_value;
-            pos_remove
+            self.circle.move_left_n(7);
+            self.points[self.current_player] += *self.circle.remove_use_right();
         };
         let next_player = (self.current_player + 1) % self.n_players;
         State {
             n_players: self.n_players,
             circle: self.circle,
-            current_marble: next_current_marble,
             current_player: next_player,
             points: self.points,
             next_marble: self.next_marble + 1,
