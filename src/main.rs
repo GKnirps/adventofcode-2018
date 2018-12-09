@@ -1,12 +1,19 @@
 fn main() -> Result<(), String> {
     // hardcode the input here, no need to read it from file
     let n_players: usize = 430;
-    let n_marbles: usize = 71588 + 1;
+    let highest_marble_puzzle_1: usize = 71588;
 
-    let score = winning_score(n_players, n_marbles);
+    let score1 = winning_score(n_players, highest_marble_puzzle_1 + 1);
     println!(
         "For {} players with {} marbles, the highest score is {}",
-        n_players, n_marbles, score
+        n_players, highest_marble_puzzle_1, score1
+    );
+
+    let highest_marble_puzzle_2 = highest_marble_puzzle_1 * 100;
+    let score2 = winning_score(n_players, highest_marble_puzzle_2 + 1);
+    println!(
+        "For {} players with {} marbles, the highest score is {}",
+        n_players, highest_marble_puzzle_2, score2
     );
 
     Ok(())
