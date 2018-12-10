@@ -10,9 +10,59 @@ fn main() -> Result<(), String> {
     let filename = env::args().nth(1).ok_or("No file name given.".to_owned())?;
     let content = read_file(&Path::new(&filename)).map_err(|e| e.to_string())?;
     let lines: Vec<&str> = content.split('\n').collect();
-    let points = parse_input(&lines);
+    let mut points = parse_input(&lines);
+    if points.len() == 0 {
+        return Err("Expected points.".to_owned());
+    }
+
+    while height(&points) > 20 {
+        move_points(&mut points);
+    }
+    while height(&points) <= 20 {
+        println!("---------------------------");
+        print_points(&points);
+        move_points(&mut points);
+    }
 
     Ok(())
+}
+
+fn height(points: &[Point]) -> i32 {
+    let (_, lower_y, _, upper_y) = get_bounds(points);
+    return upper_y - lower_y + 1;
+}
+
+fn move_points(points: &mut [Point]) {
+    for mut p in points {
+        p.position.0 += p.velocity.0;
+        p.position.1 += p.velocity.1;
+    }
+}
+
+fn print_points(points: &[Point]) {
+    let (lower_x, lower_y, upper_x, upper_y) = get_bounds(points);
+    for y in lower_y..(upper_y + 1) {
+        for x in lower_x..(upper_x + 1) {
+            if points
+                .iter()
+                .any(|p| p.position.0 == x && p.position.1 == y)
+            {
+                print!("#");
+            } else {
+                print!(".");
+            }
+        }
+        println!("");
+    }
+}
+
+fn get_bounds(points: &[Point]) -> (i32, i32, i32, i32) {
+    let lower_x = points.iter().map(|p| p.position.0).min().unwrap();
+    let lower_y = points.iter().map(|p| p.position.1).min().unwrap();
+    let upper_x = points.iter().map(|p| p.position.0).max().unwrap();
+    let upper_y = points.iter().map(|p| p.position.1).max().unwrap();;
+
+    (lower_x, lower_y, upper_x, upper_y)
 }
 
 fn read_file(path: &Path) -> std::io::Result<String> {
