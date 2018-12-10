@@ -15,13 +15,16 @@ fn main() -> Result<(), String> {
         return Err("Expected points.".to_owned());
     }
 
+    let mut timer = 0;
     while height(&points) > 20 {
         move_points(&mut points);
+        timer += 1;
     }
     while height(&points) <= 20 {
-        println!("---------------------------");
+        println!("-----------time: {}----------------", timer);
         print_points(&points);
         move_points(&mut points);
+        timer += 1;
     }
 
     Ok(())
