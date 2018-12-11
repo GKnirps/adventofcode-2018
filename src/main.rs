@@ -7,7 +7,16 @@ fn main() -> Result<(), String> {
     let cumsum = cumsum_grid(&grid);
     let (xmax, ymax) = max_3_square(&cumsum);
 
-    println!("Position of highest power: {}×{}", xmax, ymax);
+    println!(
+        "Position of highest power of a 3×3 square: {}×{}",
+        xmax, ymax
+    );
+
+    let (x, y, side) = max_square(&cumsum);
+    println!(
+        "Square with the highest power: x: {}, y: {}, side: {}",
+        x, y, side
+    );
 
     Ok(())
 }
@@ -39,6 +48,24 @@ fn cumsum_grid(grid: &[i32]) -> Vec<i32> {
         }
     }
     return cumsum;
+}
+
+fn max_square(cumsum: &[i32]) -> (i32, i32, i32) {
+    let mut square: (i32, i32, i32) = (1, 1, 1);
+    let mut max: i32 = i32::min_value();
+    for x in 1..GRID_SIDE {
+        for y in 1..GRID_SIDE {
+            let max_side = std::cmp::min(GRID_SIDE - x, GRID_SIDE - y);
+            for side in 1..max_side {
+                let power = area_value(cumsum, x, y, side, side);
+                if power > max {
+                    max = power;
+                    square = (x, y, side + 1);
+                }
+            }
+        }
+    }
+    return square;
 }
 
 fn max_3_square(cumsum: &[i32]) -> (i32, i32) {
