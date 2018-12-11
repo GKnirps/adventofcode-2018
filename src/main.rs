@@ -4,7 +4,8 @@ fn main() -> Result<(), String> {
     let puzzle_input: i32 = 5177;
 
     let grid = power_grid(puzzle_input);
-    let (xmax, ymax) = max_square(&grid);
+    let cumsum = cumsum_grid(&grid);
+    let (xmax, ymax) = max_3_square(&cumsum);
 
     println!("Position of highest power: {}×{}", xmax, ymax);
 
@@ -25,20 +26,27 @@ fn power_grid(serial: i32) -> Vec<i32> {
     return grid;
 }
 
-fn max_square(grid: &[i32]) -> (i32, i32) {
+fn cumsum_grid(grid: &[i32]) -> Vec<i32> {
+    let mut cumsum = grid.to_vec();
+    for y in 1..GRID_SIDE {
+        for x in 1..GRID_SIDE {
+            let index = (x + y * GRID_SIDE) as usize;
+            let index_left = (x - 1 + y * GRID_SIDE) as usize;
+            let index_upper = (x + (y - 1) * GRID_SIDE) as usize;
+            let index_remove = (x - 1 + (y - 1) * GRID_SIDE) as usize;
+            cumsum[index] =
+                cumsum[index] + cumsum[index_left] + cumsum[index_upper] - cumsum[index_remove];
+        }
+    }
+    return cumsum;
+}
+
+fn max_3_square(cumsum: &[i32]) -> (i32, i32) {
     let mut max: i32 = i32::min_value();
     let mut pos: (i32, i32) = (1, 1);
     for x in 1..GRID_SIDE - 1 {
         for y in 1..(GRID_SIDE - 1) {
-            let power = grid[index(x, y)]
-                + grid[index(x + 1, y)]
-                + grid[index(x + 2, y)]
-                + grid[index(x, y + 1)]
-                + grid[index(x + 1, y + 1)]
-                + grid[index(x + 2, y + 1)]
-                + grid[index(x, y + 2)]
-                + grid[index(x + 1, y + 2)]
-                + grid[index(x + 2, y + 2)];
+            let power = area_value(cumsum, x, y, 2, 2);
             if power > max {
                 max = power;
                 pos = (x, y);
@@ -46,6 +54,20 @@ fn max_square(grid: &[i32]) -> (i32, i32) {
         }
     }
     return pos;
+}
+
+fn area_value(cumsum: &[i32], x: i32, y: i32, xs: i32, ys: i32) -> i32 {
+    let mut value = cumsum[index(x + xs, y + ys)];
+    if x > 1 {
+        value -= cumsum[index(x - 1, y + ys)];
+    }
+    if y > 1 {
+        value -= cumsum[index(x + xs, y - 1)];
+    }
+    if x > 1 && y > 1 {
+        value += cumsum[index(x - 1, y - 1)];
+    }
+    return value;
 }
 
 fn index(x: i32, y: i32) -> usize {
