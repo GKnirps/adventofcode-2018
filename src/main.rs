@@ -2,7 +2,6 @@
 extern crate lazy_static;
 use regex::Regex;
 use std::collections::HashMap;
-use std::collections::VecDeque;
 use std::env;
 use std::fs::File;
 use std::io::{BufReader, Read};
@@ -13,7 +12,29 @@ fn main() -> Result<(), String> {
     let content = read_file(&Path::new(&filename)).map_err(|e| e.to_string())?;
     let lines: Vec<&str> = content.split('\n').collect();
 
+    let first_line = lines
+        .get(0)
+        .ok_or("Expected at least one line".to_owned())?;
+    let initial_state =
+        parse_initial_state(first_line).ok_or("Unable to parse initial state".to_owned())?;
+    let rules = parse_rules(&lines[1..]);
+
+    let after_20_gen = run_generations(&initial_state, &rules, 20);
+    let sum_after_20_gen = after_20_gen.sum_plant_indices();
+    println!(
+        "Sum of plant indices after 20 generations: {}",
+        sum_after_20_gen
+    );
+
     Ok(())
+}
+
+fn run_generations(state: &State, rules: &Rules, n_gen: u32) -> State {
+    let mut current_state = state.clone();
+    for _ in 0..n_gen {
+        current_state = current_state.next_gen(rules);
+    }
+    return current_state;
 }
 
 fn read_file(path: &Path) -> std::io::Result<String> {
@@ -24,9 +45,54 @@ fn read_file(path: &Path) -> std::io::Result<String> {
     return Ok(result);
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct State {
-    pots: VecDeque<bool>,
-    offset_left: usize,
+    pots: Vec<bool>,
+    offset: isize,
+}
+
+impl State {
+    fn next_gen(&self, rules: &Rules) -> State {
+        let mut next_pots: Vec<bool> = Vec::with_capacity(self.pots.len() + 4);
+        // right now, we can let the number of pots grow with each generation,
+        // we don't expect a large number of them
+        let offset = self.offset + 2;
+        for i in -2..(self.pots.len() as isize + 2) {
+            let neighbours = self.get_neighbours(i);
+            next_pots.push(*rules.get(&neighbours).unwrap_or(&neighbours[2]));
+        }
+        return State {
+            pots: next_pots,
+            offset,
+        };
+    }
+
+    fn sum_plant_indices(&self) -> isize {
+        self.pots
+            .iter()
+            .enumerate()
+            .filter(|(_, plant)| **plant)
+            .map(|(i, _)| i as isize - self.offset)
+            .sum()
+    }
+
+    fn get_neighbours(&self, index: isize) -> [bool; 5] {
+        return [
+            self.is_plant(index - 2),
+            self.is_plant(index - 1),
+            self.is_plant(index),
+            self.is_plant(index + 1),
+            self.is_plant(index + 2),
+        ];
+    }
+    fn is_plant(&self, index: isize) -> bool {
+        if index < 0 {
+            return false;
+        } else if index >= self.pots.len() as isize {
+            return false;
+        }
+        return self.pots[index as usize];
+    }
 }
 
 fn parse_initial_state(line: &str) -> Option<State> {
@@ -35,11 +101,8 @@ fn parse_initial_state(line: &str) -> Option<State> {
     }
     let capture = RE_STATE.captures(line)?;
     let pot_string = capture.get(1)?.as_str();
-    let pots: VecDeque<bool> = pot_string.chars().map(|c| c == '#').collect();
-    Some(State {
-        pots,
-        offset_left: 0,
-    })
+    let pots: Vec<bool> = pot_string.chars().map(|c| c == '#').collect();
+    Some(State { pots, offset: 0 })
 }
 
 type Rules = HashMap<[bool; 5], bool>;
@@ -83,7 +146,7 @@ mod test {
             &state.pots,
             &[false, false, true, true, true, false, false, false, true]
         );
-        assert_eq!(state.offset_left, 0);
+        assert_eq!(state.offset, 0);
     }
 
     #[test]
