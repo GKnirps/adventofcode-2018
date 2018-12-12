@@ -2,6 +2,7 @@
 extern crate lazy_static;
 use regex::Regex;
 use std::collections::HashMap;
+use std::collections::VecDeque;
 use std::env;
 use std::fs::File;
 use std::io::{BufReader, Read};
@@ -26,13 +27,31 @@ fn main() -> Result<(), String> {
         sum_after_20_gen
     );
 
+    let n_gen = 50000000000;
+    let after_n_gen = run_generations(&initial_state, &rules, n_gen);
+    let sum_after_n_gen = after_n_gen.sum_plant_indices();
+    println!(
+        "Sum of plant indices after {} generations: {}",
+        n_gen, sum_after_n_gen
+    );
+
     Ok(())
 }
 
-fn run_generations(state: &State, rules: &Rules, n_gen: u32) -> State {
+fn run_generations(state: &State, rules: &Rules, n_gen: u64) -> State {
     let mut current_state = state.clone();
-    for _ in 0..n_gen {
-        current_state = current_state.next_gen(rules);
+    for i in 0..n_gen {
+        let next_state = current_state.next_gen(rules);
+        if next_state.pots == current_state.pots {
+            // The live pot pattern did not change. The offset may still change. But we can calculate how much the offset changes and just simulate what the state will look like later in O(1)
+            let offset_change = next_state.offset - current_state.offset;
+            let generations_to_come = (n_gen - 1 - i) as isize;
+            return State {
+                pots: next_state.pots,
+                offset: next_state.offset + generations_to_come * offset_change,
+            };
+        }
+        current_state = next_state;
     }
     return current_state;
 }
@@ -47,19 +66,26 @@ fn read_file(path: &Path) -> std::io::Result<String> {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct State {
-    pots: Vec<bool>,
+    pots: VecDeque<bool>,
     offset: isize,
 }
 
 impl State {
     fn next_gen(&self, rules: &Rules) -> State {
-        let mut next_pots: Vec<bool> = Vec::with_capacity(self.pots.len() + 4);
+        let mut next_pots: VecDeque<bool> = VecDeque::with_capacity(self.pots.len() + 4);
         // right now, we can let the number of pots grow with each generation,
         // we don't expect a large number of them
-        let offset = self.offset + 2;
+        let mut offset = self.offset + 2;
         for i in -2..(self.pots.len() as isize + 2) {
             let neighbours = self.get_neighbours(i);
-            next_pots.push(*rules.get(&neighbours).unwrap_or(&neighbours[2]));
+            next_pots.push_back(*rules.get(&neighbours).unwrap_or(&neighbours[2]));
+        }
+        while next_pots.get(0) == Some(&false) {
+            offset = offset - 1;
+            next_pots.pop_front();
+        }
+        while next_pots.back() == Some(&false) {
+            next_pots.pop_back();
         }
         return State {
             pots: next_pots,
@@ -101,7 +127,7 @@ fn parse_initial_state(line: &str) -> Option<State> {
     }
     let capture = RE_STATE.captures(line)?;
     let pot_string = capture.get(1)?.as_str();
-    let pots: Vec<bool> = pot_string.chars().map(|c| c == '#').collect();
+    let pots: VecDeque<bool> = pot_string.chars().map(|c| c == '#').collect();
     Some(State { pots, offset: 0 })
 }
 
