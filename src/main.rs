@@ -95,6 +95,35 @@ fn next_tick(mut carts: Vec<Cart>, tracks: &Tracks) -> Result<CartsTick, String>
     return Ok(CartsTick::Success(carts));
 }
 
+fn next_tick_remove_crashed(mut carts: Vec<Cart>, tracks: &Tracks) -> Result<Vec<Cart>, String> {
+    // That is some very nice mutable data structure you have there. Would be a shame if anything happened to it…
+    carts.sort_by(cmp_cart_pos);
+    let mut next_carts: Vec<Cart> = Vec::with_capacity(carts.len());
+    let mut i: usize = 0;
+    while i < carts.len() {
+        let cart = &carts[i];
+        let next_cart = move_cart(cart, tracks)?;
+        let dup_index = carts[i + 1..]
+            .iter()
+            .enumerate()
+            .filter(|(_, c)| c.px == next_cart.px && c.py == next_cart.py)
+            .map(|(i, _)| i)
+            .next();
+        if let Some(i) = dup_index {
+            carts.remove(i);
+        } else if next_carts
+            .iter()
+            .any(|c| c.px == next_cart.px && c.py == next_cart.py)
+        {
+            next_carts.retain(|c| c.px != next_cart.px || c.py != next_cart.py);
+        } else {
+            next_carts.push(next_cart);
+        }
+        i += 1;
+    }
+    return Ok(next_carts);
+}
+
 fn move_cart(cart: &Cart, tracks: &Tracks) -> Result<Cart, String> {
     if cart.dir == Direction::Left && cart.px == 0 || cart.dir == Direction::Up && cart.py == 0 {
         return Err(format!(
@@ -185,16 +214,32 @@ fn run_until_crash(tracks: &Tracks, mut carts: Vec<Cart>) -> Result<(usize, usiz
     }
 }
 
+fn there_can_be_only_one(tracks: &Tracks, mut carts: Vec<Cart>) -> Result<(usize, usize), String> {
+    while carts.len() > 1 {
+        carts = next_tick_remove_crashed(carts, tracks)?;
+    }
+    return carts
+        .get(0)
+        .map(|cart| (cart.px, cart.py))
+        .ok_or_else(|| "All carts crashed!".to_owned());
+}
+
 fn main() -> Result<(), String> {
     let filename = env::args().nth(1).ok_or("No file name given.".to_owned())?;
     let content = read_file(&Path::new(&filename)).map_err(|e| e.to_string())?;
     let lines: Vec<&str> = content.split('\n').collect();
     let (tracks, carts) = parse_map(&lines);
 
-    let (crash_x, crash_y) = run_until_crash(&tracks, carts)?;
+    let (crash_x, crash_y) = run_until_crash(&tracks, carts.clone())?;
     println!(
         "The first crash occurs at position {}×{}",
         crash_x, crash_y
+    );
+
+    let (last_x, last_y) = there_can_be_only_one(&tracks, carts)?;
+    println!(
+        "The last surviving cart is at position {}×{}",
+        last_x, last_y
     );
 
     Ok(())
@@ -253,5 +298,21 @@ mod test {
         // then
         assert_eq!(crash_x, 7);
         assert_eq!(crash_y, 3);
+    }
+
+    #[test]
+    fn last_survivor_works_for_example() {
+        // given
+        let lines = &[
+            r"/>-<\  ", r"|   |  ", r"| /<+-\", r"| | | v", r"\>+</ |", r"  |   ^", r"  \<->/",
+        ];
+        let (tracks, carts) = parse_map(lines);
+
+        // when
+        let (last_x, last_y) = there_can_be_only_one(&tracks, carts).unwrap();
+
+        // then
+        assert_eq!(last_x, 6);
+        assert_eq!(last_y, 4);
     }
 }
