@@ -185,7 +185,7 @@ fn main() -> Result<(), String> {
     Ok(())
 }
 
-fn count_ambiguous_observations(observation: &Observation) -> u32 {
+fn possible_op_codes(observation: &Observation) -> Vec<OpCode> {
     static OP_CODES: [OpCode; 16] = [
         OpCode::Addr,
         OpCode::Addi,
@@ -206,19 +206,23 @@ fn count_ambiguous_observations(observation: &Observation) -> u32 {
     ];
     OP_CODES
         .iter()
-        .map(|oc| Instruction {
-            operation: *oc,
-            operands: observation.operands,
+        .map(|oc| oc.clone())
+        .filter(|oc| {
+            Instruction {
+                operation: *oc,
+                operands: observation.operands,
+            }
+            .execute(observation.before.clone())
+                == Some(observation.after)
         })
-        .filter(|op| op.execute(observation.before.clone()) == Some(observation.after))
-        .count() as u32
+        .collect()
 }
 
 fn samples_with_more_than_three_possible_ops(samples: &[Observation]) -> usize {
     samples
         .iter()
-        .map(|obs| count_ambiguous_observations(obs))
-        .filter(|c| *c >= 3)
+        .map(|obs| possible_op_codes(obs))
+        .filter(|codes| codes.len() >= 3)
         .count()
 }
 
