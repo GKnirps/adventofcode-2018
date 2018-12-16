@@ -50,7 +50,7 @@ fn bool_to_i(b: bool) -> u32 {
     return 0;
 }
 
-fn addr(mut reg: Registers, operands: &Operands) -> Option<Registers> {
+fn addr(reg: Registers, operands: &Operands) -> Option<Registers> {
     let (op_a, op_b, op_c) = *operands;
     write_into(
         reg,
@@ -58,11 +58,11 @@ fn addr(mut reg: Registers, operands: &Operands) -> Option<Registers> {
         *reg.get(op_a as usize)? + *reg.get(op_b as usize)?,
     )
 }
-fn addi(mut reg: Registers, operands: &Operands) -> Option<Registers> {
+fn addi(reg: Registers, operands: &Operands) -> Option<Registers> {
     let (op_a, op_b, op_c) = *operands;
     write_into(reg, op_c, *reg.get(op_a as usize)? + op_b)
 }
-fn mulr(mut reg: Registers, operands: &Operands) -> Option<Registers> {
+fn mulr(reg: Registers, operands: &Operands) -> Option<Registers> {
     let (op_a, op_b, op_c) = *operands;
     write_into(
         reg,
@@ -70,11 +70,11 @@ fn mulr(mut reg: Registers, operands: &Operands) -> Option<Registers> {
         *reg.get(op_a as usize)? * *reg.get(op_b as usize)?,
     )
 }
-fn muli(mut reg: Registers, operands: &Operands) -> Option<Registers> {
+fn muli(reg: Registers, operands: &Operands) -> Option<Registers> {
     let (op_a, op_b, op_c) = *operands;
     write_into(reg, op_c, *reg.get(op_a as usize)? * op_b)
 }
-fn banr(mut reg: Registers, operands: &Operands) -> Option<Registers> {
+fn banr(reg: Registers, operands: &Operands) -> Option<Registers> {
     let (op_a, op_b, op_c) = *operands;
     write_into(
         reg,
@@ -82,11 +82,11 @@ fn banr(mut reg: Registers, operands: &Operands) -> Option<Registers> {
         *reg.get(op_a as usize)? & *reg.get(op_b as usize)?,
     )
 }
-fn bani(mut reg: Registers, operands: &Operands) -> Option<Registers> {
+fn bani(reg: Registers, operands: &Operands) -> Option<Registers> {
     let (op_a, op_b, op_c) = *operands;
     write_into(reg, op_c, *reg.get(op_a as usize)? & op_b)
 }
-fn borr(mut reg: Registers, operands: &Operands) -> Option<Registers> {
+fn borr(reg: Registers, operands: &Operands) -> Option<Registers> {
     let (op_a, op_b, op_c) = *operands;
     write_into(
         reg,
@@ -94,27 +94,27 @@ fn borr(mut reg: Registers, operands: &Operands) -> Option<Registers> {
         *reg.get(op_a as usize)? | *reg.get(op_b as usize)?,
     )
 }
-fn bori(mut reg: Registers, operands: &Operands) -> Option<Registers> {
+fn bori(reg: Registers, operands: &Operands) -> Option<Registers> {
     let (op_a, op_b, op_c) = *operands;
     write_into(reg, op_c, *reg.get(op_a as usize)? | op_b)
 }
-fn setr(mut reg: Registers, operands: &Operands) -> Option<Registers> {
-    let (op_a, op_b, op_c) = *operands;
+fn setr(reg: Registers, operands: &Operands) -> Option<Registers> {
+    let (op_a, _, op_c) = *operands;
     write_into(reg, op_c, *reg.get(op_a as usize)?)
 }
-fn seti(mut reg: Registers, operands: &Operands) -> Option<Registers> {
-    let (op_a, op_b, op_c) = *operands;
+fn seti(reg: Registers, operands: &Operands) -> Option<Registers> {
+    let (op_a, _, op_c) = *operands;
     write_into(reg, op_c, op_a)
 }
-fn gtir(mut reg: Registers, operands: &Operands) -> Option<Registers> {
+fn gtir(reg: Registers, operands: &Operands) -> Option<Registers> {
     let (op_a, op_b, op_c) = *operands;
     write_into(reg, op_c, bool_to_i(op_a > *reg.get(op_b as usize)?))
 }
-fn gtri(mut reg: Registers, operands: &Operands) -> Option<Registers> {
+fn gtri(reg: Registers, operands: &Operands) -> Option<Registers> {
     let (op_a, op_b, op_c) = *operands;
     write_into(reg, op_c, bool_to_i(*reg.get(op_a as usize)? > op_b))
 }
-fn gtrr(mut reg: Registers, operands: &Operands) -> Option<Registers> {
+fn gtrr(reg: Registers, operands: &Operands) -> Option<Registers> {
     let (op_a, op_b, op_c) = *operands;
     write_into(
         reg,
@@ -122,15 +122,15 @@ fn gtrr(mut reg: Registers, operands: &Operands) -> Option<Registers> {
         bool_to_i(*reg.get(op_a as usize)? > *reg.get(op_b as usize)?),
     )
 }
-fn eqir(mut reg: Registers, operands: &Operands) -> Option<Registers> {
+fn eqir(reg: Registers, operands: &Operands) -> Option<Registers> {
     let (op_a, op_b, op_c) = *operands;
     write_into(reg, op_c, bool_to_i(op_a == *reg.get(op_b as usize)?))
 }
-fn eqri(mut reg: Registers, operands: &Operands) -> Option<Registers> {
+fn eqri(reg: Registers, operands: &Operands) -> Option<Registers> {
     let (op_a, op_b, op_c) = *operands;
     write_into(reg, op_c, bool_to_i(*reg.get(op_a as usize)? == op_b))
 }
-fn eqrr(mut reg: Registers, operands: &Operands) -> Option<Registers> {
+fn eqrr(reg: Registers, operands: &Operands) -> Option<Registers> {
     let (op_a, op_b, op_c) = *operands;
     write_into(
         reg,
@@ -172,10 +172,54 @@ fn main() -> Result<(), String> {
             sections.len()
         ));
     }
+
     let observation_blocks: Vec<&str> = sections[0].split("\n\n").collect();
     let observations = parse_observations(&observation_blocks)?;
+    let ambig_count = samples_with_more_than_three_possible_ops(&observations);
+    println!(
+        "There are {} samples with more than three possible operations (out of {})",
+        ambig_count,
+        observations.len()
+    );
 
     Ok(())
+}
+
+fn count_ambiguous_observations(observation: &Observation) -> u32 {
+    static OP_CODES: [OpCode; 16] = [
+        OpCode::Addr,
+        OpCode::Addi,
+        OpCode::Mulr,
+        OpCode::Muli,
+        OpCode::Banr,
+        OpCode::Bani,
+        OpCode::Borr,
+        OpCode::Bori,
+        OpCode::Setr,
+        OpCode::Seti,
+        OpCode::Gtir,
+        OpCode::Gtri,
+        OpCode::Gtrr,
+        OpCode::Eqir,
+        OpCode::Eqri,
+        OpCode::Eqrr,
+    ];
+    OP_CODES
+        .iter()
+        .map(|oc| Instruction {
+            operation: *oc,
+            operands: observation.operands,
+        })
+        .filter(|op| op.execute(observation.before.clone()) == Some(observation.after))
+        .count() as u32
+}
+
+fn samples_with_more_than_three_possible_ops(samples: &[Observation]) -> usize {
+    samples
+        .iter()
+        .map(|obs| count_ambiguous_observations(obs))
+        .filter(|c| *c >= 3)
+        .count()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
