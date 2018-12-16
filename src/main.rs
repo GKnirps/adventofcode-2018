@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate lazy_static;
 use regex::Regex;
+use std::collections::HashSet;
 use std::env;
 use std::fs::File;
 use std::io::{BufReader, Read};
@@ -182,28 +183,44 @@ fn main() -> Result<(), String> {
         observations.len()
     );
 
+    let op_codes = op_code_map(&observations)?;
+    let instruction_lines: Vec<&str> = sections[1].split("\n").collect();
+    let instructions = parse_instructions(&instruction_lines, &op_codes)?;
+    let result = execute(&instructions, [0, 0, 0, 0])?;
+    println!("Result registers: {:?}", result);
+
     Ok(())
 }
 
-fn possible_op_codes(observation: &Observation) -> Vec<OpCode> {
-    static OP_CODES: [OpCode; 16] = [
-        OpCode::Addr,
-        OpCode::Addi,
-        OpCode::Mulr,
-        OpCode::Muli,
-        OpCode::Banr,
-        OpCode::Bani,
-        OpCode::Borr,
-        OpCode::Bori,
-        OpCode::Setr,
-        OpCode::Seti,
-        OpCode::Gtir,
-        OpCode::Gtri,
-        OpCode::Gtrr,
-        OpCode::Eqir,
-        OpCode::Eqri,
-        OpCode::Eqrr,
-    ];
+fn execute(instructions: &[Instruction], initial_state: Registers) -> Result<Registers, String> {
+    let mut state = initial_state;
+    for instruction in instructions {
+        state = instruction
+            .execute(state)
+            .ok_or_else(|| format!("Unable to execute instruction {:?}", instruction))?;
+    }
+    return Ok(state);
+}
+
+static OP_CODES: [OpCode; 16] = [
+    OpCode::Addr,
+    OpCode::Addi,
+    OpCode::Mulr,
+    OpCode::Muli,
+    OpCode::Banr,
+    OpCode::Bani,
+    OpCode::Borr,
+    OpCode::Bori,
+    OpCode::Setr,
+    OpCode::Seti,
+    OpCode::Gtir,
+    OpCode::Gtri,
+    OpCode::Gtrr,
+    OpCode::Eqir,
+    OpCode::Eqri,
+    OpCode::Eqrr,
+];
+fn possible_op_codes(observation: &Observation) -> HashSet<OpCode> {
     OP_CODES
         .iter()
         .map(|oc| oc.clone())
@@ -216,6 +233,66 @@ fn possible_op_codes(observation: &Observation) -> Vec<OpCode> {
                 == Some(observation.after)
         })
         .collect()
+}
+
+fn op_code_map(samples: &[Observation]) -> Result<Vec<OpCode>, String> {
+    let all_op_codes: HashSet<OpCode> = OP_CODES.iter().cloned().collect();
+    let mut map: Vec<HashSet<OpCode>> = (0..OP_CODES.len()).map(|_| all_op_codes.clone()).collect();
+    for sample in samples {
+        if sample.op_id >= map.len() as u32 {
+            return Err(format!(
+                "Error matching op codes: {} is not a valid op code (must be < {})",
+                sample.op_id,
+                map.len()
+            ));
+        }
+        let op_codes = possible_op_codes(sample);
+        map[sample.op_id as usize] = map[sample.op_id as usize]
+            .intersection(&op_codes)
+            .cloned()
+            .collect();
+    }
+    let mut non_ambig: HashSet<OpCode> = map
+        .iter()
+        .filter_map(|ocs| {
+            if ocs.len() != 1 {
+                return None;
+            }
+            return ocs.iter().next().map(|oc| oc.clone());
+        })
+        .collect();
+    let mut prev_non_ambig_count = 0;
+    while prev_non_ambig_count != non_ambig.len() {
+        map = map
+            .into_iter()
+            .map(|s| {
+                if s.len() == 1 {
+                    return s;
+                }
+                return s.difference(&non_ambig).cloned().collect();
+            })
+            .collect();
+        prev_non_ambig_count = non_ambig.len();
+        non_ambig = map
+            .iter()
+            .filter_map(|ocs| {
+                if ocs.len() != 1 {
+                    return None;
+                }
+                return ocs.iter().next().map(|oc| oc.clone());
+            })
+            .collect();
+    }
+    return map
+        .iter()
+        .map(|ocs| {
+            if ocs.len() != 1 {
+                return None;
+            }
+            return ocs.iter().next().map(|oc| oc.clone());
+        })
+        .collect::<Option<Vec<OpCode>>>()
+        .ok_or_else(|| "Error matching op codes: There are still unknown op codes".to_owned());
 }
 
 fn samples_with_more_than_three_possible_ops(samples: &[Observation]) -> usize {
@@ -232,6 +309,24 @@ struct Observation {
     op_id: u32,
     operands: Operands,
     after: Registers,
+}
+
+fn parse_instructions(lines: &[&str], op_codes: &[OpCode]) -> Result<Vec<Instruction>, String> {
+    lines
+        .iter()
+        .filter(|l| l.len() != 0)
+        .map(|line| {
+            let (op_id, operands) = parse_operation_line(line)
+                .ok_or_else(|| format!("instruction line '{}' cannot be parsed", line))?;
+            let op_code = op_codes
+                .get(op_id as usize)
+                .ok_or_else(|| format!("Unknown op code: {}", op_id))?;
+            Ok(Instruction {
+                operation: *op_code,
+                operands,
+            })
+        })
+        .collect()
 }
 
 fn parse_operation_line(line: &str) -> Option<(u32, Operands)> {
