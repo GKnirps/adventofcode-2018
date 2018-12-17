@@ -21,6 +21,11 @@ fn main() -> Result<(), String> {
         "There are {} tiles that can be reached by water",
         water_count
     );
+    let stagnant_count = filled_area.count_stagnant_water();
+    println!(
+        "There are {} tiles of water that will not flow away after the source dries out",
+        stagnant_count
+    );
 
     Ok(())
 }
@@ -157,6 +162,10 @@ impl Area {
     fn count_water(&self) -> usize {
         self.tiles.iter().filter(|t| t.is_water()).count()
     }
+
+    fn count_stagnant_water(&self) -> usize {
+        self.tiles.iter().filter(|t| **t == Tile::Stagnant).count()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -251,9 +260,11 @@ mod test {
         // when
         let result = fill_area(area, 500 - x_offset, 0);
         let water_count = result.count_water();
+        let stagnant_count = result.count_stagnant_water();
 
         // then
         assert_eq!(water_count, 57);
+        assert_eq!(stagnant_count, 29);
     }
 
     #[test]
