@@ -1,8 +1,10 @@
+use std::collections::{hash_map::Entry, HashMap};
 use std::env;
 use std::fmt;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::Path;
+use std::rc::Rc;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum Cell {
@@ -130,10 +132,38 @@ impl Area {
     }
 }
 
-fn after_generations(area: &Area, n_generations: u32) -> Area {
-    let mut current_area = area.clone();
-    for _ in 0..n_generations {
-        current_area = current_area.next_gen();
+fn after_generations(area: &Area, n_generations: usize) -> Rc<Area> {
+    // a map of patterns to the index the pattern occured first
+    let mut previous_patterns_index: HashMap<Rc<Area>, usize> = HashMap::with_capacity(1000);
+    // a list of all patterns that have been observed so far, in order
+    let mut previous_patterns: Vec<Rc<Area>> = Vec::with_capacity(1000);
+
+    let mut current_area = Rc::new(area.clone());
+    previous_patterns.push(Rc::clone(&current_area));
+    previous_patterns_index.insert(Rc::clone(&current_area), 0);
+
+    for n in 0..n_generations {
+        let next_area = Rc::new(current_area.next_gen());
+        previous_patterns.push(Rc::clone(&next_area));
+
+        let entry = previous_patterns_index.entry(Rc::clone(&next_area));
+        match entry {
+            Entry::Vacant(v) => {
+                v.insert(n + 1);
+            }
+            Entry::Occupied(p) => {
+                let repetition_offset = *p.get();
+                let cycle_length = n + 1 - repetition_offset;
+                println!(
+                    "Pattern #{} occured again after {} generations.",
+                    repetition_offset, cycle_length
+                );
+                let end_index: usize =
+                    repetition_offset + (n_generations - repetition_offset) % cycle_length;
+                return Rc::clone(&previous_patterns[end_index]);
+            }
+        };
+        current_area = next_area;
     }
     return current_area;
 }
@@ -147,7 +177,17 @@ fn main() -> Result<(), String> {
     let tree_count = after_10_minutes.count_cells(Cell::Trees);
     let lumber_count = after_10_minutes.count_cells(Cell::Lumberyard);
     println!(
-        "Trees: {}, Lumberyards: {}, resource value: {}",
+        "After 10 minutes: Trees: {}, Lumberyards: {}, resource value: {}",
+        tree_count,
+        lumber_count,
+        tree_count * lumber_count
+    );
+
+    let after_billion_minutes = after_generations(&area, 1000000000);
+    let tree_count = after_billion_minutes.count_cells(Cell::Trees);
+    let lumber_count = after_billion_minutes.count_cells(Cell::Lumberyard);
+    println!(
+        "After 1000000000 minutes: Trees: {}, Lumberyards: {}, resource value: {}",
         tree_count,
         lumber_count,
         tree_count * lumber_count
