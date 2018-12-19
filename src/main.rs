@@ -24,6 +24,8 @@ enum OpCode {
     Eqir,
     Eqri,
     Eqrr,
+    // not part of the original specification, but added for efficiency at some points
+    Modr,
 }
 
 type Registers = [usize; 6];
@@ -114,6 +116,10 @@ fn eqrr(reg: Registers, operands: &Operands) -> Option<Registers> {
     let (op_a, op_b, op_c) = *operands;
     write_into(reg, op_c, bool_to_i(reg.get(op_a)? == reg.get(op_b)?))
 }
+fn modr(reg: Registers, operands: &Operands) -> Option<Registers> {
+    let (op_a, op_b, op_c) = *operands;
+    write_into(reg, op_c, *reg.get(op_a)? % *reg.get(op_b)?)
+}
 
 impl Instruction {
     fn execute(&self, reg: Registers) -> Option<Registers> {
@@ -134,6 +140,7 @@ impl Instruction {
             OpCode::Eqir => eqir(reg, &self.operands),
             OpCode::Eqri => eqri(reg, &self.operands),
             OpCode::Eqrr => eqrr(reg, &self.operands),
+            OpCode::Modr => modr(reg, &self.operands),
         }
     }
 }
@@ -146,8 +153,14 @@ fn main() -> Result<(), String> {
     let (instructions, ip_index) = parse_program(&lines)?;
     let result = execute(&instructions, [0, 0, 0, 0, 0, 0], ip_index)?;
     println!(
-        "Content of the instructions after the end of the program is {:?}",
+        "Puzzle 1: Content of the instructions after the end of the program is {:?}",
         result
+    );
+
+    let result_puzzle_2 = execute(&instructions, [1, 0, 0, 0, 0, 0], ip_index)?;
+    println!(
+        "Puzzle 2: Content of the instructions after the end of the program is {:?}",
+        result_puzzle_2
     );
 
     Ok(())
@@ -234,6 +247,7 @@ fn parse_instruction(line: &str) -> Option<Instruction> {
         "eqir" => OpCode::Eqir,
         "eqri" => OpCode::Eqri,
         "eqrr" => OpCode::Eqrr,
+        "modr" => OpCode::Modr,
         _ => {
             return None;
         }
@@ -282,5 +296,121 @@ mod test {
 
         // then
         assert_eq!(result, [7, 5, 6, 0, 0, 9]);
+    }
+
+    // These tests don't test code here but modified versions of the actual input from day 19
+    #[test]
+    fn optimized_variants_give_same_results() {
+        // given
+        let init_reg = [0, 1, 28, 0, 2, 864];
+
+        // when
+        let result_base = base_bigloop(init_reg.clone());
+        let result_rustified = rustified_bigloop(init_reg.clone());
+        let result_rust_opti = optimized_rust_bigloop(init_reg.clone());
+        let result_opti = optimized_bigloop(init_reg.clone());
+
+        // then
+        println!("Checking elfcode solution");
+        assert_eq!(result_base, [2520, 865, 1, 865, 257, 864]);
+        println!("Checking rustified solution");
+        assert_eq!(result_rustified, result_base);
+        println!("Checking optimized rustified solution");
+        assert_eq!(result_rust_opti, result_base);
+        println!("Checking optimized elfcode solution");
+        assert_eq!(result_opti, result_base);
+    }
+
+    fn base_bigloop(init_reg: Registers) -> Registers {
+        let lines = &[
+            "#ip 4",
+            "addi 0 0 0",
+            "addi 0 0 0",
+            "seti 1 7 3",
+            "mulr 1 3 2",
+            "eqrr 2 5 2",
+            "addr 2 4 4",
+            "addi 4 1 4",
+            "addr 1 0 0",
+            "addi 3 1 3",
+            "gtrr 3 5 2",
+            "addr 4 2 4",
+            "seti 2 3 4",
+            "addi 1 1 1",
+            "gtrr 1 5 2",
+            "addr 2 4 4",
+            "seti 1 6 4",
+            "mulr 4 4 4",
+        ];
+        let (instructions, ip_index) = parse_program(lines).expect("Expected a valid program.");
+
+        return execute(&instructions, init_reg, ip_index)
+            .expect("Expected program to run successfully");
+    }
+
+    fn rustified_bigloop(mut r: Registers) -> Registers {
+        loop {
+            r[3] = 1;
+            loop {
+                if r[1] * r[3] == r[5] {
+                    r[0] += r[1];
+                }
+                r[3] += 1;
+                if r[3] > r[5] {
+                    break;
+                }
+            }
+            r[1] += 1;
+            if r[1] > r[5] {
+                break;
+            }
+        }
+        r[2] = 1;
+        r[4] = 257;
+
+        return r;
+    }
+
+    fn optimized_rust_bigloop(mut r: Registers) -> Registers {
+        for r1 in 1..(r[5] + 1) {
+            if r[5] % r1 == 0 {
+                r[0] += r1;
+            }
+        }
+        r[1] = r[5] + 1;
+        r[2] = 1;
+        r[3] = r[5] + 1;
+        r[4] = 257;
+
+        return r;
+    }
+
+    fn optimized_bigloop(init_reg: Registers) -> Registers {
+        let lines = &[
+            "#ip 4",
+            "addi 0 0 0",
+            "addi 0 0 0",
+            // loop (10 operations)
+            "modr 5 1 2",
+            "eqri 2 0 2",
+            "addr 2 4 4",
+            "addi 4 1 4",
+            "addr 1 0 0",
+            "addi 5 1 3",
+            "seti 1 0 2",
+            "addi 0 0 0",
+            "addi 0 0 0",
+            "addi 0 0 0",
+            // loop
+            "addi 1 1 1",
+            "gtrr 1 5 2",
+            "addr 2 4 4",
+            "seti 1 6 4",
+            "mulr 4 4 4",
+        ];
+        let (instructions, ip_index) = parse_program(lines).expect("Expected a valid program.");
+
+        return execute(&instructions, init_reg, ip_index)
+            .expect("Expected program to run successfully");
     }
 }
