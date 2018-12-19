@@ -26,8 +26,8 @@ enum OpCode {
     Eqrr,
 }
 
-type Registers = [u32; 6];
-type Operands = (u32, u32, u32);
+type Registers = [usize; 6];
+type Operands = (usize, usize, usize);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct Instruction {
@@ -35,15 +35,15 @@ struct Instruction {
     operands: Operands,
 }
 
-fn write_into(mut registers: Registers, index: u32, value: u32) -> Option<Registers> {
-    if index < 4 {
-        registers[index as usize] = value;
+fn write_into(mut registers: Registers, index: usize, value: usize) -> Option<Registers> {
+    if index < registers.len() {
+        registers[index] = value;
         return Some(registers);
     }
     return None;
 }
 
-fn bool_to_i(b: bool) -> u32 {
+fn bool_to_i(b: bool) -> usize {
     if b {
         return 1;
     }
@@ -52,55 +52,39 @@ fn bool_to_i(b: bool) -> u32 {
 
 fn addr(reg: Registers, operands: &Operands) -> Option<Registers> {
     let (op_a, op_b, op_c) = *operands;
-    write_into(
-        reg,
-        op_c,
-        *reg.get(op_a as usize)? + *reg.get(op_b as usize)?,
-    )
+    write_into(reg, op_c, *reg.get(op_a)? + *reg.get(op_b)?)
 }
 fn addi(reg: Registers, operands: &Operands) -> Option<Registers> {
     let (op_a, op_b, op_c) = *operands;
-    write_into(reg, op_c, *reg.get(op_a as usize)? + op_b)
+    write_into(reg, op_c, *reg.get(op_a)? + op_b)
 }
 fn mulr(reg: Registers, operands: &Operands) -> Option<Registers> {
     let (op_a, op_b, op_c) = *operands;
-    write_into(
-        reg,
-        op_c,
-        *reg.get(op_a as usize)? * *reg.get(op_b as usize)?,
-    )
+    write_into(reg, op_c, *reg.get(op_a)? * *reg.get(op_b)?)
 }
 fn muli(reg: Registers, operands: &Operands) -> Option<Registers> {
     let (op_a, op_b, op_c) = *operands;
-    write_into(reg, op_c, *reg.get(op_a as usize)? * op_b)
+    write_into(reg, op_c, *reg.get(op_a)? * op_b)
 }
 fn banr(reg: Registers, operands: &Operands) -> Option<Registers> {
     let (op_a, op_b, op_c) = *operands;
-    write_into(
-        reg,
-        op_c,
-        *reg.get(op_a as usize)? & *reg.get(op_b as usize)?,
-    )
+    write_into(reg, op_c, *reg.get(op_a)? & *reg.get(op_b)?)
 }
 fn bani(reg: Registers, operands: &Operands) -> Option<Registers> {
     let (op_a, op_b, op_c) = *operands;
-    write_into(reg, op_c, *reg.get(op_a as usize)? & op_b)
+    write_into(reg, op_c, *reg.get(op_a)? & op_b)
 }
 fn borr(reg: Registers, operands: &Operands) -> Option<Registers> {
     let (op_a, op_b, op_c) = *operands;
-    write_into(
-        reg,
-        op_c,
-        *reg.get(op_a as usize)? | *reg.get(op_b as usize)?,
-    )
+    write_into(reg, op_c, *reg.get(op_a)? | *reg.get(op_b)?)
 }
 fn bori(reg: Registers, operands: &Operands) -> Option<Registers> {
     let (op_a, op_b, op_c) = *operands;
-    write_into(reg, op_c, *reg.get(op_a as usize)? | op_b)
+    write_into(reg, op_c, *reg.get(op_a)? | op_b)
 }
 fn setr(reg: Registers, operands: &Operands) -> Option<Registers> {
     let (op_a, _, op_c) = *operands;
-    write_into(reg, op_c, *reg.get(op_a as usize)?)
+    write_into(reg, op_c, *reg.get(op_a)?)
 }
 fn seti(reg: Registers, operands: &Operands) -> Option<Registers> {
     let (op_a, _, op_c) = *operands;
@@ -108,35 +92,27 @@ fn seti(reg: Registers, operands: &Operands) -> Option<Registers> {
 }
 fn gtir(reg: Registers, operands: &Operands) -> Option<Registers> {
     let (op_a, op_b, op_c) = *operands;
-    write_into(reg, op_c, bool_to_i(op_a > *reg.get(op_b as usize)?))
+    write_into(reg, op_c, bool_to_i(op_a > *reg.get(op_b)?))
 }
 fn gtri(reg: Registers, operands: &Operands) -> Option<Registers> {
     let (op_a, op_b, op_c) = *operands;
-    write_into(reg, op_c, bool_to_i(*reg.get(op_a as usize)? > op_b))
+    write_into(reg, op_c, bool_to_i(*reg.get(op_a)? > op_b))
 }
 fn gtrr(reg: Registers, operands: &Operands) -> Option<Registers> {
     let (op_a, op_b, op_c) = *operands;
-    write_into(
-        reg,
-        op_c,
-        bool_to_i(*reg.get(op_a as usize)? > *reg.get(op_b as usize)?),
-    )
+    write_into(reg, op_c, bool_to_i(*reg.get(op_a)? > *reg.get(op_b)?))
 }
 fn eqir(reg: Registers, operands: &Operands) -> Option<Registers> {
     let (op_a, op_b, op_c) = *operands;
-    write_into(reg, op_c, bool_to_i(op_a == *reg.get(op_b as usize)?))
+    write_into(reg, op_c, bool_to_i(op_a == *reg.get(op_b)?))
 }
 fn eqri(reg: Registers, operands: &Operands) -> Option<Registers> {
     let (op_a, op_b, op_c) = *operands;
-    write_into(reg, op_c, bool_to_i(*reg.get(op_a as usize)? == op_b))
+    write_into(reg, op_c, bool_to_i(*reg.get(op_a)? == op_b))
 }
 fn eqrr(reg: Registers, operands: &Operands) -> Option<Registers> {
     let (op_a, op_b, op_c) = *operands;
-    write_into(
-        reg,
-        op_c,
-        bool_to_i(reg.get(op_a as usize)? == reg.get(op_b as usize)?),
-    )
+    write_into(reg, op_c, bool_to_i(reg.get(op_a)? == reg.get(op_b)?))
 }
 
 impl Instruction {
@@ -168,16 +144,34 @@ fn main() -> Result<(), String> {
     let lines: Vec<&str> = content.split("\n").filter(|l| l.len() > 0).collect();
 
     let (instructions, ip_index) = parse_program(&lines)?;
+    let result = execute(&instructions, [0, 0, 0, 0, 0, 0], ip_index)?;
+    println!(
+        "Content of the instructions after the end of the program is {:?}",
+        result
+    );
 
     Ok(())
 }
 
-fn execute(instructions: &[Instruction], initial_state: Registers) -> Result<Registers, String> {
+fn execute(
+    instructions: &[Instruction],
+    initial_state: Registers,
+    ip_index: usize,
+) -> Result<Registers, String> {
     let mut state = initial_state;
-    for instruction in instructions {
+    if ip_index >= state.len() {
+        return Err(format!(
+            "Invalid ip index {}, there are only {} registers",
+            ip_index,
+            state.len()
+        ));
+    }
+
+    while let Some(instruction) = instructions.get(state[ip_index]) {
         state = instruction
             .execute(state)
             .ok_or_else(|| format!("Unable to execute instruction {:?}", instruction))?;
+        state[ip_index] += 1;
     }
     return Ok(state);
 }
@@ -266,4 +260,27 @@ fn read_file(path: &Path) -> std::io::Result<String> {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn execute_should_work_for_example() {
+        // given
+        let lines = &[
+            "#ip 0",
+            "seti 5 0 1",
+            "seti 6 0 2",
+            "addi 0 1 0",
+            "addr 1 2 3",
+            "setr 1 0 0",
+            "seti 8 0 4",
+            "seti 9 0 5",
+        ];
+        let (instructions, ip_index) = parse_program(lines).expect("Expected a valid program.");
+
+        // when
+        let result = execute(&instructions, [0, 0, 0, 0, 0, 0], ip_index)
+            .expect("Expected program to run successfully");
+
+        // then
+        assert_eq!(result, [7, 5, 6, 0, 0, 9]);
+    }
 }
