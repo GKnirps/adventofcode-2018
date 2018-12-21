@@ -104,6 +104,18 @@ fn furthest_room(doors: &HashSet<(i32, i32, i32, i32)>, start_x: i32, start_y: i
         .unwrap_or(0);
 }
 
+fn n_rooms_with_long_distance(
+    doors: &HashSet<(i32, i32, i32, i32)>,
+    start_x: i32,
+    start_y: i32,
+    max_dist: u32,
+) -> usize {
+    return explore(doors, start_x, start_y)
+        .values()
+        .filter(|d| **d >= max_dist)
+        .count();
+}
+
 fn main() -> Result<(), String> {
     let filename = env::args().nth(1).ok_or("No file name given.".to_owned())?;
     let content = read_file(&Path::new(&filename)).map_err(|e| e.to_string())?;
@@ -114,6 +126,12 @@ fn main() -> Result<(), String> {
     println!(
         "The shortest path to the furthest room has {} doors.",
         furthest_dist
+    );
+
+    let rooms_in_1000 = n_rooms_with_long_distance(&doors, 0, 0, 1000);
+    println!(
+        "There are {} rooms that are at least 1000 doors away.",
+        rooms_in_1000
     );
 
     Ok(())
