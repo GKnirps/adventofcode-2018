@@ -66,7 +66,11 @@ fn doors_sub(
     };
 }
 
-fn furthest_room(doors: &HashSet<(i32, i32, i32, i32)>, start_x: i32, start_y: i32) -> u32 {
+fn explore(
+    doors: &HashSet<(i32, i32, i32, i32)>,
+    start_x: i32,
+    start_y: i32,
+) -> HashMap<(i32, i32), u32> {
     let mut visited: HashMap<(i32, i32), u32> = HashMap::with_capacity(doors.len());
     let mut queue: VecDeque<(i32, i32, u32)> = VecDeque::with_capacity(doors.len());
     queue.push_back((start_x, start_y, 0));
@@ -89,7 +93,15 @@ fn furthest_room(doors: &HashSet<(i32, i32, i32, i32)>, start_x: i32, start_y: i
             visited.insert((x, y + 1), dist + 1);
         }
     }
-    return visited.values().max().cloned().unwrap_or(0);
+    return visited;
+}
+
+fn furthest_room(doors: &HashSet<(i32, i32, i32, i32)>, start_x: i32, start_y: i32) -> u32 {
+    return explore(doors, start_x, start_y)
+        .values()
+        .max()
+        .cloned()
+        .unwrap_or(0);
 }
 
 fn main() -> Result<(), String> {
