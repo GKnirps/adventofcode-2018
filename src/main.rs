@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate lazy_static;
 use regex::Regex;
+use std::collections::HashMap;
 use std::env;
 use std::fs::File;
 use std::io::{BufReader, Read};
@@ -158,6 +159,8 @@ fn main() -> Result<(), String> {
     // that other register was at the first time it was reached.
     execute(&instructions, [2985446, 0, 0, 0, 0, 0], ip_index)?;
 
+    execute(&instructions, [0, 0, 0, 0, 0, 0], ip_index)?;
+
     Ok(())
 }
 
@@ -175,7 +178,30 @@ fn execute(
         ));
     }
 
+    let mut instruction_counter: usize = 0;
+    let mut seen: HashMap<usize, usize> = HashMap::with_capacity(1024);
+
     while let Some(instruction) = instructions.get(state[ip_index]) {
+        instruction_counter += 1;
+        if instruction_counter % 10000000 == 0 {
+            println!("Ran {} instructions", instruction_counter);
+        }
+        if state[ip_index] == 28 {
+            if !seen.contains_key(&state[4]) {
+                seen.insert(state[4], instruction_counter);
+            } else {
+                let value = seen
+                    .iter()
+                    .max_by_key(|(_, ic)| *ic)
+                    .map(|(r4, _)| *r4)
+                    .expect("Expected at least one value");
+                println!(
+                    "Seen that r4 before: {}. The last non-duplicate was {}",
+                    state[4], value
+                );
+                break;
+            }
+        }
         state = instruction
             .execute(state)
             .ok_or_else(|| format!("Unable to execute instruction {:?}", instruction))?;
