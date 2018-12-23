@@ -8,10 +8,25 @@ use std::path::Path;
 
 type Position = (i64, i64, i64);
 
+fn dist(p1: &Position, p2: &Position) -> i64 {
+    (p1.0 - p2.0).abs() + (p1.1 - p2.1).abs() + (p1.2 - p2.2).abs()
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct Bot {
     pos: Position,
     radius: i64,
+}
+
+fn bots_in_range_of_strongest_bot(bots: &[Bot]) -> usize {
+    if let Some(strongest_bot) = bots.iter().max_by_key(|b| b.radius) {
+        return bots
+            .iter()
+            .map(|bot| dist(&strongest_bot.pos, &bot.pos))
+            .filter(|d| *d <= strongest_bot.radius)
+            .count();
+    }
+    return 0;
 }
 
 fn main() -> Result<(), String> {
@@ -20,6 +35,12 @@ fn main() -> Result<(), String> {
     let lines: Vec<&str> = content.split('\n').collect();
 
     let bots = parse_bots(&lines)?;
+
+    let n_in_range = bots_in_range_of_strongest_bot(&bots);
+    println!(
+        "There are {} bots in range of the bots with the strongest signal.",
+        n_in_range
+    );
 
     Ok(())
 }
@@ -72,5 +93,28 @@ mod test {
         // then
         assert_eq!(bot.pos, (-25859315, 11930330, 30505051));
         assert_eq!(bot.radius, 55054958);
+    }
+
+    #[test]
+    fn bots_in_range_of_strongest_bot_works_for_example() {
+        // given
+        let lines = &[
+            "pos=<0,0,0>, r=4",
+            "pos=<1,0,0>, r=1",
+            "pos=<4,0,0>, r=3",
+            "pos=<0,2,0>, r=1",
+            "pos=<0,5,0>, r=3",
+            "pos=<0,0,3>, r=1",
+            "pos=<1,1,1>, r=1",
+            "pos=<1,1,2>, r=1",
+            "pos=<1,3,1>, r=1",
+        ];
+        let bots = parse_bots(lines).expect("Expected valid bots");
+
+        // when
+        let n = bots_in_range_of_strongest_bot(&bots);
+
+        // then
+        assert_eq!(n, 7);
     }
 }
