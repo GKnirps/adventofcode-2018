@@ -152,6 +152,12 @@ fn main() -> Result<(), String> {
 
     let (instructions, ip_index) = parse_program(&lines)?;
 
+    // solution for puzzle 1 (for my input)
+    // in my input, exiting the loop was on condition that something in another
+    // register equals register 0. So all I had to to was to find out what the value in
+    // that other register was at the first time it was reached.
+    execute(&instructions, [2985446, 0, 0, 0, 0, 0], ip_index)?;
+
     Ok(())
 }
 
