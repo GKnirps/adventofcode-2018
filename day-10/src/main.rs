@@ -63,7 +63,7 @@ fn get_bounds(points: &[Point]) -> (i32, i32, i32, i32) {
     let lower_x = points.iter().map(|p| p.position.0).min().unwrap();
     let lower_y = points.iter().map(|p| p.position.1).min().unwrap();
     let upper_x = points.iter().map(|p| p.position.0).max().unwrap();
-    let upper_y = points.iter().map(|p| p.position.1).max().unwrap();;
+    let upper_y = points.iter().map(|p| p.position.1).max().unwrap();
 
     (lower_x, lower_y, upper_x, upper_y)
 }
@@ -108,6 +108,7 @@ struct Point {
 mod test {
     use super::*;
 
+    #[test]
     fn parse_line_works_correctly() {
         // given
         let input = "position=<-20620, -41485> velocity=< 2,  4>";

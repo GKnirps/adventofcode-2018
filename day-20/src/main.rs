@@ -42,7 +42,7 @@ fn doors_sub(
             };
             doors.insert((px, py, x_next, y_next));
             doors.insert((x_next, y_next, px, py));
-            [(x_next, y_next)].into_iter().cloned().collect()
+            [(x_next, y_next)].iter().cloned().collect()
         }
         Expression::Or(re1, re2) => {
             let result1 = doors_sub(px, py, re1, doors);
@@ -50,7 +50,7 @@ fn doors_sub(
             result1.union(&result2).cloned().collect()
         }
         Expression::Group(expressions) => {
-            let mut ends: HashSet<(i32, i32)> = [(px, py)].into_iter().cloned().collect();
+            let mut ends: HashSet<(i32, i32)> = [(px, py)].iter().cloned().collect();
             for expression in expressions {
                 let mut new_ends: HashSet<(i32, i32)> = HashSet::with_capacity(256);
                 for (x, y) in ends {
@@ -144,7 +144,7 @@ fn parse_input(input: &str) -> Result<Expression, String> {
 }
 
 fn parse_expression(
-    input: &mut Iterator<Item = char>,
+    input: &mut dyn Iterator<Item = char>,
     stack: &mut Vec<char>,
 ) -> Result<Expression, String> {
     let mut group: Vec<Expression> = Vec::with_capacity(16);

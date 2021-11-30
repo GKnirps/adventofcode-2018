@@ -61,7 +61,7 @@ fn has_multiples(counter: &HashMap<char, u64>) -> (bool, bool) {
 fn count_letters(id: &str) -> HashMap<char, u64> {
     let mut result = HashMap::with_capacity(id.len());
     for c in id.chars() {
-        if let Some(count) = result.get(&c) {
+        if let Some(count) = result.get(&c).copied() {
             result.insert(c, count + 1);
         } else {
             result.insert(c, 1);

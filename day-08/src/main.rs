@@ -58,7 +58,7 @@ struct Node {
     metadata: Vec<usize>,
 }
 
-fn read_tree(input: &mut Iterator<Item = usize>) -> Result<Node, String> {
+fn read_tree(input: &mut dyn Iterator<Item = usize>) -> Result<Node, String> {
     let n_children: usize = input
         .next()
         .ok_or_else(|| "Unexpected end of input, expected number of children".to_owned())?;

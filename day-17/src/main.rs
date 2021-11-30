@@ -47,7 +47,7 @@ fn fill_area(mut area: Area, source_x: usize, source_y: usize) -> Area {
     let mut wall_left: bool = false;
     let mut x = source_x;
     let mut left_max = x;
-    let mut more = area.tile(x, source_y + 1).is_full();;
+    let mut more = area.tile(x, source_y + 1).is_full();
     while more && x > 0 {
         x -= 1;
         if area.tile(x, source_y) == Tile::Clay {

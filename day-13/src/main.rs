@@ -177,11 +177,11 @@ fn next_dir_for_cart(cart: &Cart, track: &TrackPiece) -> (Direction, u8) {
             cart.turn,
         ),
         TrackPiece::Intersection => {
-            (match cart.turn % 3 {
+            match cart.turn % 3 {
                 0 => (turn_left(cart.dir), 1),
                 1 => (cart.dir, 2),
                 _ => (turn_right(cart.dir), 0),
-            })
+            }
         }
     }
 }
@@ -231,10 +231,7 @@ fn main() -> Result<(), String> {
     let (tracks, carts) = parse_map(&lines);
 
     let (crash_x, crash_y) = run_until_crash(&tracks, carts.clone())?;
-    println!(
-        "The first crash occurs at position {}×{}",
-        crash_x, crash_y
-    );
+    println!("The first crash occurs at position {}×{}", crash_x, crash_y);
 
     let (last_x, last_y) = there_can_be_only_one(&tracks, carts)?;
     println!(
