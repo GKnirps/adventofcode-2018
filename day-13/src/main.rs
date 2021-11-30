@@ -176,13 +176,11 @@ fn next_dir_for_cart(cart: &Cart, track: &TrackPiece) -> (Direction, u8) {
             },
             cart.turn,
         ),
-        TrackPiece::Intersection => {
-            match cart.turn % 3 {
-                0 => (turn_left(cart.dir), 1),
-                1 => (cart.dir, 2),
-                _ => (turn_right(cart.dir), 0),
-            }
-        }
+        TrackPiece::Intersection => match cart.turn % 3 {
+            0 => (turn_left(cart.dir), 1),
+            1 => (cart.dir, 2),
+            _ => (turn_right(cart.dir), 0),
+        },
     }
 }
 

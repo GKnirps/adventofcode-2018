@@ -137,7 +137,8 @@ fn get_neighbours(
         && equ_allowed_for_type(
             erosion_level(node.px - 1, node.py, geo_map, target_x, target_y, depth) % 3,
             node.equipment,
-        ) {
+        )
+    {
         neighbours.push((
             Node {
                 px: node.px - 1,
@@ -151,7 +152,8 @@ fn get_neighbours(
         && equ_allowed_for_type(
             erosion_level(node.px, node.py - 1, geo_map, target_x, target_y, depth) % 3,
             node.equipment,
-        ) {
+        )
+    {
         neighbours.push((
             Node {
                 px: node.px,
