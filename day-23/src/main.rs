@@ -162,14 +162,15 @@ fn find_best_positions(bots: &[Bot]) -> Vec<Position> {
             if cube.side_length == 1 {
                 next_cubes.push((cube.clone(), bots_in_range(&cube, bots)));
             } else {
-                for smaller in split_cube(&cube).into_iter() {
-                    next_cubes.push((smaller.clone(), bots_in_range(&smaller, bots)));
+                for smaller in split_cube(&cube) {
+                    let in_range = bots_in_range(&smaller, bots);
+                    next_cubes.push((smaller, in_range));
                 }
             }
         }
 
         let max_bots = next_cubes.iter().map(|(_, n)| *n).max();
-        // only the cubes with the maximum number of bot thet reach them continue
+        // only the cubes with the maximum number of bot that reach them continue
         current_cubes = next_cubes
             .into_iter()
             .filter(|(_, n)| Some(*n) == max_bots)
