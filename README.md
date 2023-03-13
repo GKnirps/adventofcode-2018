@@ -1,7 +1,7 @@
 Advent of Code 2018
 ===================
 
-These are solutions for the [Advent of Code 2020](https://adventofcode.com/2018).
+These are solutions for the [Advent of Code 2018](https://adventofcode.com/2018).
 All solutions so far have been written in rust.
 
 Some of the days don't have a solution yet, even though it looks like it (day 15 and day 23).
