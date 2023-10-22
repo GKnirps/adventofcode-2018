@@ -41,14 +41,14 @@ fn write_into(mut registers: Registers, index: u32, value: u32) -> Option<Regist
         registers[index as usize] = value;
         return Some(registers);
     }
-    return None;
+    None
 }
 
 fn bool_to_i(b: bool) -> u32 {
     if b {
         return 1;
     }
-    return 0;
+    0
 }
 
 fn addr(reg: Registers, operands: &Operands) -> Option<Registers> {
@@ -165,7 +165,7 @@ impl Instruction {
 
 fn main() -> Result<(), String> {
     let filename = env::args().nth(1).ok_or("No file name given.".to_owned())?;
-    let content = read_file(&Path::new(&filename)).map_err(|e| e.to_string())?;
+    let content = read_file(Path::new(&filename)).map_err(|e| e.to_string())?;
     let sections: Vec<&str> = content.split("\n\n\n\n").collect();
     if sections.len() != 2 {
         return Err(format!(
@@ -184,7 +184,7 @@ fn main() -> Result<(), String> {
     );
 
     let op_codes = op_code_map(&observations)?;
-    let instruction_lines: Vec<&str> = sections[1].split("\n").collect();
+    let instruction_lines: Vec<&str> = sections[1].split('\n').collect();
     let instructions = parse_instructions(&instruction_lines, &op_codes)?;
     let result = execute(&instructions, [0, 0, 0, 0])?;
     println!("Result registers: {:?}", result);
@@ -199,7 +199,7 @@ fn execute(instructions: &[Instruction], initial_state: Registers) -> Result<Reg
             .execute(state)
             .ok_or_else(|| format!("Unable to execute instruction {:?}", instruction))?;
     }
-    return Ok(state);
+    Ok(state)
 }
 
 static OP_CODES: [OpCode; 16] = [
@@ -222,14 +222,13 @@ static OP_CODES: [OpCode; 16] = [
 ];
 fn possible_op_codes(observation: &Observation) -> HashSet<OpCode> {
     OP_CODES
-        .iter()
-        .map(|oc| oc.clone())
+        .iter().copied()
         .filter(|oc| {
             Instruction {
                 operation: *oc,
                 operands: observation.operands,
             }
-            .execute(observation.before.clone())
+            .execute(observation.before)
                 == Some(observation.after)
         })
         .collect()
@@ -258,7 +257,7 @@ fn op_code_map(samples: &[Observation]) -> Result<Vec<OpCode>, String> {
             if ocs.len() != 1 {
                 return None;
             }
-            return ocs.iter().next().map(|oc| oc.clone());
+            return ocs.iter().next().copied();
         })
         .collect();
     let mut prev_non_ambig_count = 0;
@@ -279,7 +278,7 @@ fn op_code_map(samples: &[Observation]) -> Result<Vec<OpCode>, String> {
                 if ocs.len() != 1 {
                     return None;
                 }
-                return ocs.iter().next().map(|oc| oc.clone());
+                return ocs.iter().next().copied();
             })
             .collect();
     }
@@ -289,7 +288,7 @@ fn op_code_map(samples: &[Observation]) -> Result<Vec<OpCode>, String> {
             if ocs.len() != 1 {
                 return None;
             }
-            return ocs.iter().next().map(|oc| oc.clone());
+            return ocs.iter().next().copied();
         })
         .collect::<Option<Vec<OpCode>>>()
         .ok_or_else(|| "Error matching op codes: There are still unknown op codes".to_owned());
@@ -298,7 +297,7 @@ fn op_code_map(samples: &[Observation]) -> Result<Vec<OpCode>, String> {
 fn samples_with_more_than_three_possible_ops(samples: &[Observation]) -> usize {
     samples
         .iter()
-        .map(|obs| possible_op_codes(obs))
+        .map(possible_op_codes)
         .filter(|codes| codes.len() >= 3)
         .count()
 }
@@ -314,7 +313,7 @@ struct Observation {
 fn parse_instructions(lines: &[&str], op_codes: &[OpCode]) -> Result<Vec<Instruction>, String> {
     lines
         .iter()
-        .filter(|l| l.len() != 0)
+        .filter(|l| !l.is_empty())
         .map(|line| {
             let (op_id, operands) = parse_operation_line(line)
                 .ok_or_else(|| format!("instruction line '{}' cannot be parsed", line))?;
@@ -341,7 +340,7 @@ fn parse_operation_line(line: &str) -> Option<(u32, Operands)> {
         capture.get(3)?.as_str().parse().ok()?,
         capture.get(4)?.as_str().parse().ok()?,
     );
-    return Some((op_id, operands));
+    Some((op_id, operands))
 }
 
 fn parse_observations(blocks: &[&str]) -> Result<Vec<Observation>, String> {
@@ -378,12 +377,12 @@ fn parse_observation(block: &str) -> Option<Observation> {
         a_capture.get(3)?.as_str().parse().ok()?,
         a_capture.get(4)?.as_str().parse().ok()?,
     ];
-    return Some(Observation {
+    Some(Observation {
         before,
         op_id,
         operands,
         after,
-    });
+    })
 }
 
 fn read_file(path: &Path) -> std::io::Result<String> {
@@ -391,7 +390,7 @@ fn read_file(path: &Path) -> std::io::Result<String> {
     let mut bufr = BufReader::new(ifile);
     let mut result = String::with_capacity(2048);
     bufr.read_to_string(&mut result)?;
-    return Ok(result);
+    Ok(result)
 }
 
 #[cfg(test)]
