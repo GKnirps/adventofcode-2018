@@ -2,7 +2,7 @@
 name = "adventofcode"
 version = "0.1.0"
 authors = ["Guido Knips <guido.knips@posteo.de>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 regex = "^1.1.0"
