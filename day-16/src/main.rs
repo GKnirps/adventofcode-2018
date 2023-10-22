@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate lazy_static;
-use regex::Regex;
 use std::collections::HashSet;
 use std::env;
 use std::fs::File;
@@ -222,7 +219,8 @@ static OP_CODES: [OpCode; 16] = [
 ];
 fn possible_op_codes(observation: &Observation) -> HashSet<OpCode> {
     OP_CODES
-        .iter().copied()
+        .iter()
+        .copied()
         .filter(|oc| {
             Instruction {
                 operation: *oc,
@@ -329,16 +327,12 @@ fn parse_instructions(lines: &[&str], op_codes: &[OpCode]) -> Result<Vec<Instruc
 }
 
 fn parse_operation_line(line: &str) -> Option<(u32, Operands)> {
-    lazy_static! {
-        static ref RE_OPERATION: Regex =
-            Regex::new(r"(\d+) (\d+) (\d+) (\d+)").expect("Expected operation regex to compile");
-    }
-    let capture = RE_OPERATION.captures(line)?;
-    let op_id: u32 = capture.get(1)?.as_str().parse().ok()?;
+    let mut split = line.splitn(4, ' ');
+    let op_id: u32 = split.next()?.parse().ok()?;
     let operands: Operands = (
-        capture.get(2)?.as_str().parse().ok()?,
-        capture.get(3)?.as_str().parse().ok()?,
-        capture.get(4)?.as_str().parse().ok()?,
+        split.next()?.parse().ok()?,
+        split.next()?.parse().ok()?,
+        split.next()?.parse().ok()?,
     );
     Some((op_id, operands))
 }
@@ -352,31 +346,33 @@ fn parse_observations(blocks: &[&str]) -> Result<Vec<Observation>, String> {
 }
 
 fn parse_observation(block: &str) -> Option<Observation> {
-    lazy_static! {
-        static ref RE_BEFORE: Regex = Regex::new(r"Before: *\[(\d), (\d), (\d), (\d)\]")
-            .expect("Expected before-register-regex to parse");
-        static ref RE_AFTER: Regex = Regex::new(r"After: *\[(\d), (\d), (\d), (\d)\]")
-            .expect("Expected after-register-regex to parse");
-    }
-    let lines: Vec<&str> = block.split('\n').collect();
-    if lines.len() != 3 {
+    let mut lines = block.lines();
+    let mut befores = lines
+        .next()?
+        .strip_prefix("Before: [")?
+        .strip_suffix(']')?
+        .splitn(4, ", ");
+    let before: Registers = [
+        befores.next()?.parse().ok()?,
+        befores.next()?.parse().ok()?,
+        befores.next()?.parse().ok()?,
+        befores.next()?.parse().ok()?,
+    ];
+    let (op_id, operands) = parse_operation_line(lines.next()?)?;
+    let mut afters = lines
+        .next()?
+        .strip_prefix("After:  [")?
+        .strip_suffix(']')?
+        .splitn(4, ", ");
+    let after: Registers = [
+        afters.next()?.parse().ok()?,
+        afters.next()?.parse().ok()?,
+        afters.next()?.parse().ok()?,
+        afters.next()?.parse().ok()?,
+    ];
+    if lines.next().is_some() {
         return None;
     }
-    let b_capture = RE_BEFORE.captures(lines[0])?;
-    let before: Registers = [
-        b_capture.get(1)?.as_str().parse().ok()?,
-        b_capture.get(2)?.as_str().parse().ok()?,
-        b_capture.get(3)?.as_str().parse().ok()?,
-        b_capture.get(4)?.as_str().parse().ok()?,
-    ];
-    let (op_id, operands) = parse_operation_line(lines[1])?;
-    let a_capture = RE_AFTER.captures(lines[2])?;
-    let after: Registers = [
-        a_capture.get(1)?.as_str().parse().ok()?,
-        a_capture.get(2)?.as_str().parse().ok()?,
-        a_capture.get(3)?.as_str().parse().ok()?,
-        a_capture.get(4)?.as_str().parse().ok()?,
-    ];
     Some(Observation {
         before,
         op_id,
@@ -400,7 +396,7 @@ mod test {
     #[test]
     fn observation_parsing_works_correctly() {
         // given
-        let block = "Before: [0, 1, 2, 3]\n10 20 30 40\nAfter: [4, 5, 6, 7]";
+        let block = "Before: [0, 1, 2, 3]\n10 20 30 40\nAfter:  [4, 5, 6, 7]";
 
         // when
         let observation = parse_observation(block).expect("Expected a valid observation");
