@@ -1,10 +1,6 @@
-#[macro_use]
-extern crate lazy_static;
-use regex::Regex;
 use std::collections::HashSet;
 use std::env;
-use std::fs::File;
-use std::io::{BufReader, Read};
+use std::fs::read_to_string;
 use std::path::Path;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
@@ -68,7 +64,7 @@ impl Fabric {
 
 fn main() -> Result<(), String> {
     let filename = env::args().nth(1).ok_or("No file name given.".to_owned())?;
-    let content = read_file(Path::new(&filename)).map_err(|e| e.to_string())?;
+    let content = read_to_string(Path::new(&filename)).map_err(|e| e.to_string())?;
 
     let claims = parse_claims(&content);
     let (xsize, ysize) = required_size(&claims).ok_or_else(|| "No claims".to_owned())?;
@@ -88,34 +84,29 @@ fn main() -> Result<(), String> {
         non_overlapping.len()
     );
     for id in non_overlapping {
-        println!("{}", id);
+        println!("{id}");
     }
 
     Ok(())
 }
 
-fn read_file(path: &Path) -> std::io::Result<String> {
-    let ifile = File::open(path)?;
-    let mut bufr = BufReader::new(ifile);
-    let mut result = String::with_capacity(2048);
-    bufr.read_to_string(&mut result)?;
-    Ok(result)
-}
-
 fn parse_claims(input: &str) -> Vec<Claim> {
-    input.split('\n').filter_map(parse_claim).collect()
+    input.lines().filter_map(parse_claim).collect()
 }
 
 fn parse_claim(line: &str) -> Option<Claim> {
-    lazy_static! {
-        static ref RE_CLAIM: Regex = Regex::new(r"#(\d+) @ (\d+),(\d+): (\d+)x(\d+)").unwrap();
-    }
-    let capture = RE_CLAIM.captures(line)?;
-    let id: u64 = capture.get(1)?.as_str().parse().ok()?;
-    let px: usize = capture.get(2)?.as_str().parse().ok()?;
-    let py: usize = capture.get(3)?.as_str().parse().ok()?;
-    let sx: usize = capture.get(4)?.as_str().parse().ok()?;
-    let sy: usize = capture.get(5)?.as_str().parse().ok()?;
+    let (id, coords) = line.split_once(" @ ")?;
+    let (coords, sizes) = coords.split_once(": ")?;
+
+    let id: u64 = id.strip_prefix('#')?.parse().ok()?;
+
+    let (px, py) = coords.split_once(',')?;
+    let px: usize = px.parse().ok()?;
+    let py: usize = py.parse().ok()?;
+
+    let (sx, sy) = sizes.split_once('x')?;
+    let sx = sx.parse().ok()?;
+    let sy = sy.parse().ok()?;
 
     Some(Claim { id, px, py, sx, sy })
 }
