@@ -58,17 +58,17 @@ impl Fabric {
         for cell in &self.area {
             if cell.len() > 1 {
                 for id in cell {
-                    ids.remove(&id);
+                    ids.remove(id);
                 }
             }
         }
-        return ids;
+        ids
     }
 }
 
 fn main() -> Result<(), String> {
     let filename = env::args().nth(1).ok_or("No file name given.".to_owned())?;
-    let content = read_file(&Path::new(&filename)).map_err(|e| e.to_string())?;
+    let content = read_file(Path::new(&filename)).map_err(|e| e.to_string())?;
 
     let claims = parse_claims(&content);
     let (xsize, ysize) = required_size(&claims).ok_or_else(|| "No claims".to_owned())?;
@@ -99,7 +99,7 @@ fn read_file(path: &Path) -> std::io::Result<String> {
     let mut bufr = BufReader::new(ifile);
     let mut result = String::with_capacity(2048);
     bufr.read_to_string(&mut result)?;
-    return Ok(result);
+    Ok(result)
 }
 
 fn parse_claims(input: &str) -> Vec<Claim> {
