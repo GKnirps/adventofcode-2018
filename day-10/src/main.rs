@@ -2,13 +2,12 @@
 extern crate lazy_static;
 use regex::Regex;
 use std::env;
-use std::fs::File;
-use std::io::{BufReader, Read};
+use std::fs::read_to_string;
 use std::path::Path;
 
 fn main() -> Result<(), String> {
     let filename = env::args().nth(1).ok_or("No file name given.".to_owned())?;
-    let content = read_file(Path::new(&filename)).map_err(|e| e.to_string())?;
+    let content = read_to_string(Path::new(&filename)).map_err(|e| e.to_string())?;
     let lines: Vec<&str> = content.split('\n').collect();
     let mut points = parse_input(&lines);
     if points.is_empty() {
@@ -66,14 +65,6 @@ fn get_bounds(points: &[Point]) -> (i32, i32, i32, i32) {
     let upper_y = points.iter().map(|p| p.position.1).max().unwrap();
 
     (lower_x, lower_y, upper_x, upper_y)
-}
-
-fn read_file(path: &Path) -> std::io::Result<String> {
-    let ifile = File::open(path)?;
-    let mut bufr = BufReader::new(ifile);
-    let mut result = String::with_capacity(2048);
-    bufr.read_to_string(&mut result)?;
-    Ok(result)
 }
 
 fn parse_input(lines: &[&str]) -> Vec<Point> {
