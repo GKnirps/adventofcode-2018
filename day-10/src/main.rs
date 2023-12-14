@@ -8,8 +8,7 @@ use std::path::Path;
 fn main() -> Result<(), String> {
     let filename = env::args().nth(1).ok_or("No file name given.".to_owned())?;
     let content = read_to_string(Path::new(&filename)).map_err(|e| e.to_string())?;
-    let lines: Vec<&str> = content.split('\n').collect();
-    let mut points = parse_input(&lines);
+    let mut points = parse_input(&content);
     if points.is_empty() {
         return Err("Expected points.".to_owned());
     }
@@ -67,8 +66,8 @@ fn get_bounds(points: &[Point]) -> (i32, i32, i32, i32) {
     (lower_x, lower_y, upper_x, upper_y)
 }
 
-fn parse_input(lines: &[&str]) -> Vec<Point> {
-    lines.iter().filter_map(|line| parse_line(line)).collect()
+fn parse_input(input: &str) -> Vec<Point> {
+    input.lines().filter_map(parse_line).collect()
 }
 
 fn parse_line(line: &str) -> Option<Point> {
