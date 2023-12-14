@@ -1,7 +1,3 @@
-#[macro_use]
-extern crate lazy_static;
-use regex::Regex;
-
 use std::collections::HashMap;
 use std::env;
 use std::fs::File;
@@ -106,25 +102,15 @@ enum Event {
 }
 
 fn parse_log_line(line: &str) -> Option<Event> {
-    lazy_static! {
-        static ref RE_LOG: Regex = Regex::new(
-            r"\[\d{4}-\d{2}-\d{2} \d{2}:(\d{2})\] (Guard|wakes up|falls asleep)( #(\d+))?"
-        )
-        .unwrap();
+    let (time, event) = line.split_once("] ")?;
+    let minutes: u32 = time.split_once(':')?.1.parse().ok()?;
+    match event {
+        "falls asleep" => Some(Event::FallsAsleep(minutes)),
+        "wakes up" => Some(Event::WakesUp(minutes)),
+        s => {
+            Some(Event::Begin(s.strip_prefix("Guard #")?.strip_suffix(" begins shift")?.parse().ok()?))
+        }
     }
-    let capture = RE_LOG.captures(line)?;
-    let minutes: u32 = capture.get(1)?.as_str().parse().ok()?;
-    let discriminator = capture.get(2)?.as_str();
-    return if discriminator == "falls asleep" {
-        Some(Event::FallsAsleep(minutes))
-    } else if discriminator == "wakes up" {
-        Some(Event::WakesUp(minutes))
-    } else if discriminator == "Guard" {
-        let guard_id: u32 = capture.get(4)?.as_str().parse().ok()?;
-        Some(Event::Begin(guard_id))
-    } else {
-        None
-    };
 }
 
 #[cfg(test)]
