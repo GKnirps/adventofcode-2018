@@ -6,7 +6,7 @@ use std::path::Path;
 
 fn main() -> Result<(), String> {
     let filename = env::args().nth(1).ok_or("No file name given.".to_owned())?;
-    let content = read_file(&Path::new(&filename)).map_err(|e| e.to_string())?;
+    let content = read_file(Path::new(&filename)).map_err(|e| e.to_string())?;
     let mut lines: Vec<&str> = content.split('\n').collect();
     lines.sort_unstable();
     let lines = lines;
@@ -16,14 +16,14 @@ fn main() -> Result<(), String> {
     let sleepiest_guard = sleep_times
         .iter()
         .map(|(id, sheet)| (id, sheet, sheet.iter().sum::<u32>()))
-        .max_by_key(|(_, _, sum)| sum.clone())
+        .max_by_key(|(_, _, sum)| *sum)
         .ok_or_else(|| "No guards!".to_owned())?;
 
     let sleepiest_minute = sleepiest_guard
         .1
         .iter()
         .enumerate()
-        .max_by_key(|(_, times)| times.clone())
+        .max_by_key(|(_, times)| *times)
         .ok_or_else(|| "No time?!?".to_owned())?;
     println!(
         "Guard {} sleeps the most! Sleepiest minute: {}. Puzzle 1 result: {}",
@@ -38,10 +38,10 @@ fn main() -> Result<(), String> {
             sheet
                 .iter()
                 .enumerate()
-                .max_by_key(|(_, times)| times.clone())
+                .max_by_key(|(_, times)| *times)
                 .map(|(minute, times)| (id, sheet, minute, times))
         })
-        .max_by_key(|(_, _, _, times)| times.clone())
+        .max_by_key(|(_, _, _, times)| *times)
         .ok_or_else(|| "No guards!".to_owned())?;
     println!(
         "Guard {} sleeps most often in minute {}. Puzzle 2 result: {}",
@@ -58,7 +58,7 @@ fn read_file(path: &Path) -> std::io::Result<String> {
     let mut bufr = BufReader::new(ifile);
     let mut result = String::with_capacity(2048);
     bufr.read_to_string(&mut result)?;
-    return Ok(result);
+    Ok(result)
 }
 
 fn guard_sleep_times(lines: &[&str]) -> HashMap<u32, Vec<u32>> {
@@ -77,21 +77,19 @@ fn guard_sleep_times(lines: &[&str]) -> HashMap<u32, Vec<u32>> {
                 asleep_since = Some(minutes);
             }
             Event::WakesUp(minutes) => {
-                if !result.contains_key(&current_guard) {
-                    result.insert(current_guard, (0..60).map(|_| 0).collect());
-                }
+                result.entry(current_guard).or_insert_with(|| (0..60).map(|_| 0).collect());
                 // also not very stable but who cares
                 if let Some(asleep_since) = asleep_since {
                     if let Some(sleepsheet) = result.get_mut(&current_guard) {
                         for i in asleep_since..minutes {
-                            sleepsheet[i as usize] = sleepsheet[i as usize] + 1;
+                            sleepsheet[i as usize] += 1;
                         }
                     }
                 }
             }
         }
     }
-    return result;
+    result
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -107,9 +105,12 @@ fn parse_log_line(line: &str) -> Option<Event> {
     match event {
         "falls asleep" => Some(Event::FallsAsleep(minutes)),
         "wakes up" => Some(Event::WakesUp(minutes)),
-        s => {
-            Some(Event::Begin(s.strip_prefix("Guard #")?.strip_suffix(" begins shift")?.parse().ok()?))
-        }
+        s => Some(Event::Begin(
+            s.strip_prefix("Guard #")?
+                .strip_suffix(" begins shift")?
+                .parse()
+                .ok()?,
+        )),
     }
 }
 
