@@ -8,10 +8,10 @@ use std::path::Path;
 
 fn main() -> Result<(), String> {
     let filename = env::args().nth(1).ok_or("No file name given.".to_owned())?;
-    let content = read_file(&Path::new(&filename)).map_err(|e| e.to_string())?;
+    let content = read_file(Path::new(&filename)).map_err(|e| e.to_string())?;
     let lines: Vec<&str> = content.split('\n').collect();
     let mut points = parse_input(&lines);
-    if points.len() == 0 {
+    if points.is_empty() {
         return Err("Expected points.".to_owned());
     }
 
@@ -32,11 +32,11 @@ fn main() -> Result<(), String> {
 
 fn height(points: &[Point]) -> i32 {
     let (_, lower_y, _, upper_y) = get_bounds(points);
-    return upper_y - lower_y + 1;
+    upper_y - lower_y + 1
 }
 
 fn move_points(points: &mut [Point]) {
-    for mut p in points {
+    for p in points {
         p.position.0 += p.velocity.0;
         p.position.1 += p.velocity.1;
     }
@@ -55,7 +55,7 @@ fn print_points(points: &[Point]) {
                 print!(".");
             }
         }
-        println!("");
+        println!();
     }
 }
 
@@ -73,7 +73,7 @@ fn read_file(path: &Path) -> std::io::Result<String> {
     let mut bufr = BufReader::new(ifile);
     let mut result = String::with_capacity(2048);
     bufr.read_to_string(&mut result)?;
-    return Ok(result);
+    Ok(result)
 }
 
 fn parse_input(lines: &[&str]) -> Vec<Point> {
@@ -92,10 +92,10 @@ fn parse_line(line: &str) -> Option<Point> {
     let vel_x: i32 = capture.get(3)?.as_str().parse().ok()?;
     let vel_y: i32 = capture.get(4)?.as_str().parse().ok()?;
 
-    return Some(Point {
+    Some(Point {
         position: (pos_x, pos_y),
         velocity: (vel_x, vel_y),
-    });
+    })
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
