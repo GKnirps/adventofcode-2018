@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate lazy_static;
-use regex::Regex;
 use std::env;
 use std::fs::read_to_string;
 use std::path::Path;
@@ -71,16 +68,15 @@ fn parse_input(input: &str) -> Vec<Point> {
 }
 
 fn parse_line(line: &str) -> Option<Point> {
-    lazy_static! {
-        static ref RE_POINT: Regex =
-            Regex::new(r"position=<\s*(-?\d+),\s*(-?\d+)> velocity=<\s*(-?\d+),\s*(-?\d+)>")
-                .unwrap();
-    }
-    let capture = RE_POINT.captures(line)?;
-    let pos_x: i32 = capture.get(1)?.as_str().parse().ok()?;
-    let pos_y: i32 = capture.get(2)?.as_str().parse().ok()?;
-    let vel_x: i32 = capture.get(3)?.as_str().parse().ok()?;
-    let vel_y: i32 = capture.get(4)?.as_str().parse().ok()?;
+    let (pos, vel) = line.split_once("> velocity=<")?;
+
+    let (pos_x, pos_y) = pos.strip_prefix("position=<")?.split_once(", ")?;
+    let pos_x: i32 = pos_x.trim().parse().ok()?;
+    let pos_y: i32 = pos_y.trim().parse().ok()?;
+
+    let (vel_x, vel_y) = vel.strip_suffix('>')?.split_once(", ")?;
+    let vel_x: i32 = vel_x.trim().parse().ok()?;
+    let vel_y: i32 = vel_y.trim().parse().ok()?;
 
     Some(Point {
         position: (pos_x, pos_y),
