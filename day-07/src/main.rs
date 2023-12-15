@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate lazy_static;
-use regex::Regex;
 use std::collections::HashMap;
 use std::env;
 use std::fs::read_to_string;
@@ -65,19 +62,13 @@ fn work_on_nodes(inv_dag: &HashMap<char, Vec<char>>, n_workers: usize) -> Option
         used_time += wait_time;
 
         // mark finished jobs
-        for (node, _) in workers
-            .iter()
-            .filter_map(|w| *w)
-            .filter(|(_, t)| *t == 0)
-        {
+        for (node, _) in workers.iter().filter_map(|w| *w).filter(|(_, t)| *t == 0) {
             result.push(node);
         }
         // remove finished jobs from workers
         workers = workers
             .iter()
-            .map(|w| {
-                w.and_then(|(node, time)| if time == 0 { None } else { Some((node, time)) })
-            })
+            .map(|w| w.and_then(|(node, time)| if time == 0 { None } else { Some((node, time)) }))
             .collect();
     }
 
@@ -121,13 +112,9 @@ fn parse_inverse_dag(lines: &[&str]) -> HashMap<char, Vec<char>> {
 }
 
 fn parse_line(line: &str) -> Option<(char, char)> {
-    lazy_static! {
-        static ref RE_DEP: Regex =
-            Regex::new(r"Step (\w) must be finished before step (\w) can begin.").unwrap();
-    }
-    let capture = RE_DEP.captures(line)?;
-    let dependency = capture.get(1)?.as_str().chars().next()?;
-    let dependant = capture.get(2)?.as_str().chars().next()?;
+    let (dependency, dependant) = line.split_once(" must be finished before step ")?;
+    let dependency = dependency.strip_prefix("Step ")?.chars().next()?;
+    let dependant = dependant.strip_suffix(" can begin.")?.chars().next()?;
 
     Some((dependency, dependant))
 }
