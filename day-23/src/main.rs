@@ -34,13 +34,13 @@ struct Cube {
 // return a fitting cube that contains the positions of all bots
 // or None if there are no bots
 fn fitting_cube(bots: &[Bot]) -> Option<Cube> {
-    let x_min: i64 = bots.iter().map(|b| b.pos.0).min()?;
-    let y_min: i64 = bots.iter().map(|b| b.pos.1).min()?;
-    let z_min: i64 = bots.iter().map(|b| b.pos.2).min()?;
+    let x_min: i64 = bots.iter().map(|b| b.pos.0 - b.radius).min()?;
+    let y_min: i64 = bots.iter().map(|b| b.pos.1 - b.radius).min()?;
+    let z_min: i64 = bots.iter().map(|b| b.pos.2 - b.radius).min()?;
 
-    let x_len: i64 = bots.iter().map(|b| b.pos.0).max()? - x_min + 1;
-    let y_len: i64 = bots.iter().map(|b| b.pos.1).max()? - y_min + 1;
-    let z_len: i64 = bots.iter().map(|b| b.pos.2).max()? - z_min + 1;
+    let x_len: i64 = bots.iter().map(|b| b.pos.0 + b.radius).max()? - x_min;
+    let y_len: i64 = bots.iter().map(|b| b.pos.1 + b.radius).max()? - y_min;
+    let z_len: i64 = bots.iter().map(|b| b.pos.2 + b.radius).max()? - z_min;
 
     let side_length: i64 = x_len.max(y_len).max(z_len);
 
@@ -68,22 +68,22 @@ fn bot_in_range(cube: &Cube, bot: &Bot) -> bool {
         || point_in_cube(cube, &(bot.pos.0, bot.pos.1, bot.pos.2 + bot.radius))
         || point_in_cube(cube, &(bot.pos.0, bot.pos.1, bot.pos.2 - bot.radius))
         || point_in_cube(cube, &bot.pos)
-        || dist(&cube.pos, &bot.pos) < bot.radius
-        || dist(&(cube.pos.0 + cube_range, cube.pos.1, cube.pos.2), &bot.pos) < bot.radius
-        || dist(&(cube.pos.0, cube.pos.1 + cube_range, cube.pos.2), &bot.pos) < bot.radius
-        || dist(&(cube.pos.0, cube.pos.1, cube.pos.2 + cube_range), &bot.pos) < bot.radius
+        || dist(&cube.pos, &bot.pos) <= bot.radius
+        || dist(&(cube.pos.0 + cube_range, cube.pos.1, cube.pos.2), &bot.pos) <= bot.radius
+        || dist(&(cube.pos.0, cube.pos.1 + cube_range, cube.pos.2), &bot.pos) <= bot.radius
+        || dist(&(cube.pos.0, cube.pos.1, cube.pos.2 + cube_range), &bot.pos) <= bot.radius
         || dist(
             &(cube.pos.0 + cube_range, cube.pos.1 + cube_range, cube.pos.2),
             &bot.pos,
-        ) < bot.radius
+        ) <= bot.radius
         || dist(
             &(cube.pos.0 + cube_range, cube.pos.1, cube.pos.2 + cube_range),
             &bot.pos,
-        ) < bot.radius
+        ) <= bot.radius
         || dist(
             &(cube.pos.0, cube.pos.1 + cube_range, cube.pos.2 + cube_range),
             &bot.pos,
-        ) < bot.radius
+        ) <= bot.radius
         || dist(
             &(
                 cube.pos.0 + cube_range,
@@ -91,7 +91,7 @@ fn bot_in_range(cube: &Cube, bot: &Bot) -> bool {
                 cube.pos.2 + cube_range,
             ),
             &bot.pos,
-        ) < bot.radius
+        ) <= bot.radius
 }
 
 fn bots_in_range(cube: &Cube, bots: &[Bot]) -> u64 {
