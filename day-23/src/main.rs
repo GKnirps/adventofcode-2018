@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate lazy_static;
-use regex::Regex;
 use std::env;
 use std::fs::read_to_string;
 use std::path::Path;
@@ -229,15 +226,13 @@ fn parse_bots(lines: &[&str]) -> Result<Vec<Bot>, String> {
 }
 
 fn parse_bot(line: &str) -> Option<Bot> {
-    lazy_static! {
-        static ref RE_BOT: Regex = Regex::new(r"pos=<(-?\d+),(-?\d+),(-?\d+)>, r=(\d+)")
-            .expect("Expected valid bot regex");
-    }
-    let capture = RE_BOT.captures(line)?;
-    let px: i64 = capture.get(1)?.as_str().parse().ok()?;
-    let py: i64 = capture.get(2)?.as_str().parse().ok()?;
-    let pz: i64 = capture.get(3)?.as_str().parse().ok()?;
-    let radius: i64 = capture.get(4)?.as_str().parse().ok()?;
+    let (pos, radius) = line.split_once(">, r=")?;
+    let mut pos = pos.strip_prefix("pos=<")?.splitn(3, ',');
+
+    let px: i64 = pos.next()?.parse().ok()?;
+    let py: i64 = pos.next()?.parse().ok()?;
+    let pz: i64 = pos.next()?.parse().ok()?;
+    let radius: i64 = radius.parse().ok()?;
 
     Some(Bot {
         pos: (px, py, pz),
