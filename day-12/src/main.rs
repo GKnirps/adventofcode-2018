@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate lazy_static;
-use regex::Regex;
 use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::env;
@@ -12,7 +9,8 @@ fn main() -> Result<(), String> {
     let content = read_to_string(Path::new(&filename)).map_err(|e| e.to_string())?;
     let lines: Vec<&str> = content.lines().collect();
 
-    let first_line = lines.first()
+    let first_line = lines
+        .first()
         .ok_or("Expected at least one line".to_owned())?;
     let initial_state =
         parse_initial_state(first_line).ok_or("Unable to parse initial state".to_owned())?;
@@ -107,12 +105,12 @@ impl State {
 }
 
 fn parse_initial_state(line: &str) -> Option<State> {
-    lazy_static! {
-        static ref RE_STATE: Regex = Regex::new(r"initial state: ([.#]+)").unwrap();
-    }
-    let capture = RE_STATE.captures(line)?;
-    let pot_string = capture.get(1)?.as_str();
-    let pots: VecDeque<bool> = pot_string.chars().map(|c| c == '#').collect();
+    let pots: VecDeque<bool> = line
+        .strip_prefix("initial state: ")?
+        .chars()
+        .filter(|c| *c == '#' || *c == '.')
+        .map(|c| c == '#')
+        .collect();
     Some(State { pots, offset: 0 })
 }
 
@@ -123,11 +121,8 @@ fn parse_rules(lines: &[&str]) -> Rules {
 }
 
 fn parse_rule(line: &str) -> Option<([bool; 5], bool)> {
-    lazy_static! {
-        static ref RE_RULE: Regex = Regex::new(r"([.#]{5}) => ([.#])").unwrap();
-    }
-    let capture = RE_RULE.captures(line)?;
-    let mut con_it = capture.get(1)?.as_str().chars().map(|c| c == '#');
+    let (con, result) = line.split_once(" => ")?;
+    let mut con_it = con.chars().map(|c| c == '#');
     let condition: [bool; 5] = [
         con_it.next()?,
         con_it.next()?,
@@ -135,7 +130,7 @@ fn parse_rule(line: &str) -> Option<([bool; 5], bool)> {
         con_it.next()?,
         con_it.next()?,
     ];
-    let result = capture.get(2)?.as_str().chars().next()? == '#';
+    let result = result.chars().next()? == '#';
 
     Some((condition, result))
 }
