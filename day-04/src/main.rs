@@ -1,13 +1,12 @@
 use std::collections::HashMap;
 use std::env;
-use std::fs::File;
-use std::io::{BufReader, Read};
+use std::fs::read_to_string;
 use std::path::Path;
 
 fn main() -> Result<(), String> {
     let filename = env::args().nth(1).ok_or("No file name given.".to_owned())?;
-    let content = read_file(Path::new(&filename)).map_err(|e| e.to_string())?;
-    let mut lines: Vec<&str> = content.split('\n').collect();
+    let content = read_to_string(Path::new(&filename)).map_err(|e| e.to_string())?;
+    let mut lines: Vec<&str> = content.lines().collect();
     lines.sort_unstable();
     let lines = lines;
 
@@ -53,14 +52,6 @@ fn main() -> Result<(), String> {
     Ok(())
 }
 
-fn read_file(path: &Path) -> std::io::Result<String> {
-    let ifile = File::open(path)?;
-    let mut bufr = BufReader::new(ifile);
-    let mut result = String::with_capacity(2048);
-    bufr.read_to_string(&mut result)?;
-    Ok(result)
-}
-
 fn guard_sleep_times(lines: &[&str]) -> HashMap<u32, Vec<u32>> {
     let mut result: HashMap<u32, Vec<u32>> = HashMap::with_capacity(lines.len());
     let mut asleep_since: Option<u32> = None;
@@ -77,7 +68,9 @@ fn guard_sleep_times(lines: &[&str]) -> HashMap<u32, Vec<u32>> {
                 asleep_since = Some(minutes);
             }
             Event::WakesUp(minutes) => {
-                result.entry(current_guard).or_insert_with(|| (0..60).map(|_| 0).collect());
+                result
+                    .entry(current_guard)
+                    .or_insert_with(|| (0..60).map(|_| 0).collect());
                 // also not very stable but who cares
                 if let Some(asleep_since) = asleep_since {
                     if let Some(sleepsheet) = result.get_mut(&current_guard) {
