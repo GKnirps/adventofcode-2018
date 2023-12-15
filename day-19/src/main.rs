@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate lazy_static;
-use regex::Regex;
 use std::collections::HashMap;
 use std::env;
 use std::fs::read_to_string;
@@ -210,20 +207,12 @@ fn execute(
 }
 
 fn parse_program(lines: &[&str]) -> Result<(Vec<Instruction>, usize), String> {
-    lazy_static! {
-        static ref RE_IP_INDEX: Regex =
-            Regex::new(r"#ip (\d)").expect("Expected instruction pointer index regex to compile");
-    }
     if lines.is_empty() {
         return Err("Cannot parse program: Input is empty.".to_owned());
     }
-    let capture = RE_IP_INDEX
-        .captures(lines[0])
-        .ok_or_else(|| "Unable to parse instruction pointer index".to_string())?;
-    let ip_index: usize = capture
-        .get(1)
+    let ip_index: usize = lines[0]
+        .strip_prefix("#ip ")
         .ok_or("Expected match for ip index")?
-        .as_str()
         .parse()
         .map_err(|e| format!("instruction pointer index is not a number: {}", e))?;
 
@@ -244,12 +233,8 @@ fn parse_instructions(lines: &[&str]) -> Result<Vec<Instruction>, String> {
 }
 
 fn parse_instruction(line: &str) -> Option<Instruction> {
-    lazy_static! {
-        static ref RE_OPERATION: Regex =
-            Regex::new(r"(\S+) (\d+) (\d+) (\d+)").expect("Expected operation regex to compile");
-    }
-    let capture = RE_OPERATION.captures(line)?;
-    let op_code_str = capture.get(1)?.as_str();
+    let mut parts = line.split_whitespace();
+    let op_code_str = parts.next()?;
     let op_code: OpCode = match op_code_str {
         "addr" => OpCode::Addr,
         "addi" => OpCode::Addi,
@@ -273,10 +258,13 @@ fn parse_instruction(line: &str) -> Option<Instruction> {
         }
     };
     let operands: Operands = (
-        capture.get(2)?.as_str().parse().ok()?,
-        capture.get(3)?.as_str().parse().ok()?,
-        capture.get(4)?.as_str().parse().ok()?,
+        parts.next()?.parse().ok()?,
+        parts.next()?.parse().ok()?,
+        parts.next()?.parse().ok()?,
     );
+    if parts.next().is_some() {
+        return None;
+    }
     Some(Instruction {
         operation: op_code,
         operands,
