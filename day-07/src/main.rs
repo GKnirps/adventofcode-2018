@@ -3,13 +3,12 @@ extern crate lazy_static;
 use regex::Regex;
 use std::collections::HashMap;
 use std::env;
-use std::fs::File;
-use std::io::{BufReader, Read};
+use std::fs::read_to_string;
 use std::path::Path;
 
 fn main() -> Result<(), String> {
     let filename = env::args().nth(1).ok_or("No file name given.".to_owned())?;
-    let content = read_file(&Path::new(&filename)).map_err(|e| e.to_string())?;
+    let content = read_to_string(Path::new(&filename)).map_err(|e| e.to_string())?;
     let lines: Vec<&str> = content.split('\n').collect();
 
     let inverse_dag = parse_inverse_dag(&lines);
@@ -48,7 +47,7 @@ fn work_on_nodes(inv_dag: &HashMap<char, Vec<char>>, n_workers: usize) -> Option
         // give available jobs to free workers
         for i in 0..workers.len() {
             if workers[i].is_none() {
-                if let Some(min_independent_node) = get_next_node(&inv_dag, &result, &workers) {
+                if let Some(min_independent_node) = get_next_node(inv_dag, &result, &workers) {
                     workers[i] = Some((min_independent_node, time(min_independent_node)));
                 } else {
                     break;
@@ -68,7 +67,7 @@ fn work_on_nodes(inv_dag: &HashMap<char, Vec<char>>, n_workers: usize) -> Option
         // mark finished jobs
         for (node, _) in workers
             .iter()
-            .filter_map(|w| w.clone())
+            .filter_map(|w| *w)
             .filter(|(_, t)| *t == 0)
         {
             result.push(node);
@@ -77,12 +76,12 @@ fn work_on_nodes(inv_dag: &HashMap<char, Vec<char>>, n_workers: usize) -> Option
         workers = workers
             .iter()
             .map(|w| {
-                w.and_then(|(node, time)| return if time == 0 { None } else { Some((node, time)) })
+                w.and_then(|(node, time)| if time == 0 { None } else { Some((node, time)) })
             })
             .collect();
     }
 
-    return Some((result, used_time));
+    Some((result, used_time))
 }
 
 fn get_next_node(
@@ -96,20 +95,12 @@ fn get_next_node(
             !finished_jobs.contains(dependant)
                 && !workers
                     .iter()
-                    .filter_map(|w| w.clone())
+                    .filter_map(|w| *w)
                     .any(|(node, _)| node == **dependant)
-                && dependencies.iter().all(|dep| finished_jobs.contains(&dep))
+                && dependencies.iter().all(|dep| finished_jobs.contains(dep))
         })
-        .min_by_key(|(dependant, _)| dependant.clone())
+        .min_by_key(|(dependant, _)| *dependant)
         .map(|(d, _)| *d)
-}
-
-fn read_file(path: &Path) -> std::io::Result<String> {
-    let ifile = File::open(path)?;
-    let mut bufr = BufReader::new(ifile);
-    let mut result = String::with_capacity(2048);
-    bufr.read_to_string(&mut result)?;
-    return Ok(result);
 }
 
 fn parse_inverse_dag(lines: &[&str]) -> HashMap<char, Vec<char>> {
@@ -124,7 +115,7 @@ fn parse_inverse_dag(lines: &[&str]) -> HashMap<char, Vec<char>> {
             edges
                 .entry(dependency)
                 .or_insert_with(|| Vec::with_capacity(10));
-            return edges;
+            edges
         },
     )
 }
@@ -138,7 +129,7 @@ fn parse_line(line: &str) -> Option<(char, char)> {
     let dependency = capture.get(1)?.as_str().chars().next()?;
     let dependant = capture.get(2)?.as_str().chars().next()?;
 
-    return Some((dependency, dependant));
+    Some((dependency, dependant))
 }
 
 #[cfg(test)]
