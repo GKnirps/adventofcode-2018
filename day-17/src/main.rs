@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate lazy_static;
-use regex::Regex;
 use std::env;
 use std::fs::read_to_string;
 use std::path::Path;
@@ -205,15 +202,14 @@ fn parse_veins(lines: &[&str]) -> Vec<Vein> {
 }
 
 fn parse_line(line: &str) -> Option<Vein> {
-    lazy_static! {
-        static ref RE_VEIN: Regex =
-            Regex::new(r"([xy])=(\d+), [xy]=(\d+)..(\d+)").expect("Expected vein regex to parse");
-    }
-    let capture = RE_VEIN.captures(line)?;
-    let d1: usize = capture.get(2)?.as_str().parse().ok()?;
-    let d2_1: usize = capture.get(3)?.as_str().parse().ok()?;
-    let d2_2: usize = capture.get(4)?.as_str().parse().ok()?;
-    match capture.get(1)?.as_str() {
+    let (start, range) = line.split_once(", ")?;
+    let (orientation, d1) = start.split_once('=')?;
+    let d1: usize = d1.parse().ok()?;
+    let (_, range) = range.split_once('=')?;
+    let (d2_1, d2_2) = range.split_once("..")?;
+    let d2_1 = d2_1.parse().ok()?;
+    let d2_2 = d2_2.parse().ok()?;
+    match orientation {
         "x" => Some(Vein::Vertical {
             x: d1,
             y1: d2_1,
