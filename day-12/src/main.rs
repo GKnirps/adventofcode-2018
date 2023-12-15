@@ -4,17 +4,15 @@ use regex::Regex;
 use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::env;
-use std::fs::File;
-use std::io::{BufReader, Read};
+use std::fs::read_to_string;
 use std::path::Path;
 
 fn main() -> Result<(), String> {
     let filename = env::args().nth(1).ok_or("No file name given.".to_owned())?;
-    let content = read_file(&Path::new(&filename)).map_err(|e| e.to_string())?;
-    let lines: Vec<&str> = content.split('\n').collect();
+    let content = read_to_string(Path::new(&filename)).map_err(|e| e.to_string())?;
+    let lines: Vec<&str> = content.lines().collect();
 
-    let first_line = lines
-        .get(0)
+    let first_line = lines.first()
         .ok_or("Expected at least one line".to_owned())?;
     let initial_state =
         parse_initial_state(first_line).ok_or("Unable to parse initial state".to_owned())?;
@@ -53,15 +51,7 @@ fn run_generations(state: &State, rules: &Rules, n_gen: u64) -> State {
         }
         current_state = next_state;
     }
-    return current_state;
-}
-
-fn read_file(path: &Path) -> std::io::Result<String> {
-    let ifile = File::open(path)?;
-    let mut bufr = BufReader::new(ifile);
-    let mut result = String::with_capacity(2048);
-    bufr.read_to_string(&mut result)?;
-    return Ok(result);
+    current_state
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -80,17 +70,17 @@ impl State {
             let neighbours = self.get_neighbours(i);
             next_pots.push_back(*rules.get(&neighbours).unwrap_or(&neighbours[2]));
         }
-        while next_pots.get(0) == Some(&false) {
-            offset = offset - 1;
+        while next_pots.front() == Some(&false) {
+            offset -= 1;
             next_pots.pop_front();
         }
         while next_pots.back() == Some(&false) {
             next_pots.pop_back();
         }
-        return State {
+        State {
             pots: next_pots,
             offset,
-        };
+        }
     }
 
     fn sum_plant_indices(&self) -> isize {
@@ -103,21 +93,16 @@ impl State {
     }
 
     fn get_neighbours(&self, index: isize) -> [bool; 5] {
-        return [
+        [
             self.is_plant(index - 2),
             self.is_plant(index - 1),
             self.is_plant(index),
             self.is_plant(index + 1),
             self.is_plant(index + 2),
-        ];
+        ]
     }
     fn is_plant(&self, index: isize) -> bool {
-        if index < 0 {
-            return false;
-        } else if index >= self.pots.len() as isize {
-            return false;
-        }
-        return self.pots[index as usize];
+        index >= 0 && index < self.pots.len() as isize && self.pots[index as usize]
     }
 }
 
@@ -152,7 +137,7 @@ fn parse_rule(line: &str) -> Option<([bool; 5], bool)> {
     ];
     let result = capture.get(2)?.as_str().chars().next()? == '#';
 
-    return Some((condition, result));
+    Some((condition, result))
 }
 
 #[cfg(test)]
