@@ -144,12 +144,6 @@ fn find_best_positions(bots: &[Bot]) -> Vec<Position> {
     // continue until the cubes have a side length of 1
 
     let mut current_cubes: Vec<Cube> = fitting_cube(bots).into_iter().collect();
-    // FIXME
-    println!(
-        "Starting with cube {:?}, with bots in range: {}",
-        current_cubes,
-        bots_in_range(&current_cubes[0], bots)
-    );
     while current_cubes.iter().map(|c| c.side_length).any(|s| s > 1) {
         // split up cubes with the number of bots that can reach them
         let mut next_cubes: Vec<(Cube, u64)> = Vec::with_capacity(current_cubes.len() * 8);
@@ -172,13 +166,6 @@ fn find_best_positions(bots: &[Bot]) -> Vec<Position> {
             .filter(|(_, n)| Some(*n) == max_bots)
             .map(|(c, _)| c)
             .collect();
-        // FIXME
-        println!(
-            "Next iteration: {} cubes, maximal number of reachable bots: {:?}, side length: {}",
-            current_cubes.len(),
-            max_bots,
-            current_cubes[0].side_length
-        );
     }
     current_cubes.into_iter().map(|c| c.pos).collect()
 }
