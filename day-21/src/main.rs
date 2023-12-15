@@ -3,8 +3,7 @@ extern crate lazy_static;
 use regex::Regex;
 use std::collections::HashMap;
 use std::env;
-use std::fs::File;
-use std::io::{BufReader, Read};
+use std::fs::read_to_string;
 use std::path::Path;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -43,14 +42,14 @@ fn write_into(mut registers: Registers, index: usize, value: usize) -> Option<Re
         registers[index] = value;
         return Some(registers);
     }
-    return None;
+    None
 }
 
 fn bool_to_i(b: bool) -> usize {
     if b {
         return 1;
     }
-    return 0;
+    0
 }
 
 fn addr(reg: Registers, operands: &Operands) -> Option<Registers> {
@@ -148,8 +147,8 @@ impl Instruction {
 
 fn main() -> Result<(), String> {
     let filename = env::args().nth(1).ok_or("No file name given.".to_owned())?;
-    let content = read_file(&Path::new(&filename)).map_err(|e| e.to_string())?;
-    let lines: Vec<&str> = content.split("\n").filter(|l| l.len() > 0).collect();
+    let content = read_to_string(Path::new(&filename)).map_err(|e| e.to_string())?;
+    let lines: Vec<&str> = content.lines().filter(|l| !l.is_empty()).collect();
 
     let (instructions, ip_index) = parse_program(&lines)?;
 
@@ -187,8 +186,8 @@ fn execute(
             println!("Ran {} instructions", instruction_counter);
         }
         if state[ip_index] == 28 {
-            if !seen.contains_key(&state[4]) {
-                seen.insert(state[4], instruction_counter);
+            if let std::collections::hash_map::Entry::Vacant(e) = seen.entry(state[4]) {
+                e.insert(instruction_counter);
             } else {
                 let value = seen
                     .iter()
@@ -207,7 +206,7 @@ fn execute(
             .ok_or_else(|| format!("Unable to execute instruction {:?}", instruction))?;
         state[ip_index] += 1;
     }
-    return Ok(state);
+    Ok(state)
 }
 
 fn parse_program(lines: &[&str]) -> Result<(Vec<Instruction>, usize), String> {
@@ -215,28 +214,28 @@ fn parse_program(lines: &[&str]) -> Result<(Vec<Instruction>, usize), String> {
         static ref RE_IP_INDEX: Regex =
             Regex::new(r"#ip (\d)").expect("Expected instruction pointer index regex to compile");
     }
-    if lines.len() == 0 {
+    if lines.is_empty() {
         return Err("Cannot parse program: Input is empty.".to_owned());
     }
     let capture = RE_IP_INDEX
         .captures(lines[0])
-        .ok_or_else(|| format!("Unable to parse instruction pointer index"))?;
+        .ok_or_else(|| "Unable to parse instruction pointer index".to_string())?;
     let ip_index: usize = capture
         .get(1)
-        .ok_or_else(|| "Expected match for ip index")?
+        .ok_or("Expected match for ip index")?
         .as_str()
         .parse()
         .map_err(|e| format!("instruction pointer index is not a number: {}", e))?;
 
     let instructions = parse_instructions(&lines[1..])?;
 
-    return Ok((instructions, ip_index));
+    Ok((instructions, ip_index))
 }
 
 fn parse_instructions(lines: &[&str]) -> Result<Vec<Instruction>, String> {
     lines
         .iter()
-        .filter(|l| l.len() != 0)
+        .filter(|l| !l.is_empty())
         .map(|line| {
             parse_instruction(line)
                 .ok_or_else(|| format!("instruction line '{}' cannot be parsed", line))
@@ -278,18 +277,10 @@ fn parse_instruction(line: &str) -> Option<Instruction> {
         capture.get(3)?.as_str().parse().ok()?,
         capture.get(4)?.as_str().parse().ok()?,
     );
-    return Some(Instruction {
+    Some(Instruction {
         operation: op_code,
         operands,
-    });
-}
-
-fn read_file(path: &Path) -> std::io::Result<String> {
-    let ifile = File::open(path)?;
-    let mut bufr = BufReader::new(ifile);
-    let mut result = String::with_capacity(2048);
-    bufr.read_to_string(&mut result)?;
-    return Ok(result);
+    })
 }
 
 #[cfg(test)]
