@@ -2,14 +2,13 @@
 extern crate lazy_static;
 use regex::Regex;
 use std::env;
-use std::fs::File;
-use std::io::{BufReader, Read};
+use std::fs::read_to_string;
 use std::path::Path;
 
 fn main() -> Result<(), String> {
     let filename = env::args().nth(1).ok_or("No file name given.".to_owned())?;
-    let content = read_file(&Path::new(&filename)).map_err(|e| e.to_string())?;
-    let lines: Vec<&str> = content.split('\n').collect();
+    let content = read_to_string(Path::new(&filename)).map_err(|e| e.to_string())?;
+    let lines: Vec<&str> = content.lines().collect();
     let veins = parse_veins(&lines);
     let (area, x_offset) =
         Area::from_veins(&veins).ok_or_else(|| "Unable to create area from veins".to_owned())?;
@@ -92,7 +91,7 @@ fn fill_area(mut area: Area, source_x: usize, source_y: usize) -> Area {
         area.set_tile(x, source_y, fill_tile);
     }
 
-    return area;
+    area
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -146,7 +145,7 @@ impl Area {
             }
         }
 
-        return Some((Area { xs, ys, tiles }, x_offset));
+        Some((Area { xs, ys, tiles }, x_offset))
     }
 
     fn tile(&self, x: usize, y: usize) -> Tile {
@@ -227,14 +226,6 @@ fn parse_line(line: &str) -> Option<Vein> {
         }),
         _ => None,
     }
-}
-
-fn read_file(path: &Path) -> std::io::Result<String> {
-    let ifile = File::open(path)?;
-    let mut bufr = BufReader::new(ifile);
-    let mut result = String::with_capacity(2048);
-    bufr.read_to_string(&mut result)?;
-    return Ok(result);
 }
 
 #[cfg(test)]
