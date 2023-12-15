@@ -2,8 +2,7 @@
 extern crate lazy_static;
 use regex::Regex;
 use std::env;
-use std::fs::File;
-use std::io::{BufReader, Read};
+use std::fs::read_to_string;
 use std::path::Path;
 
 type Position = (i64, i64, i64);
@@ -26,7 +25,7 @@ fn bots_in_range_of_strongest_bot(bots: &[Bot]) -> usize {
             .filter(|d| *d <= strongest_bot.radius)
             .count();
     }
-    return 0;
+    0
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -48,24 +47,24 @@ fn fitting_cube(bots: &[Bot]) -> Option<Cube> {
 
     let side_length: i64 = x_len.max(y_len).max(z_len);
 
-    return Some(Cube {
+    Some(Cube {
         pos: (x_min, y_min, z_min),
         side_length,
-    });
+    })
 }
 
 fn point_in_cube(cube: &Cube, point: &Position) -> bool {
-    return cube.pos.0 <= point.0
+    cube.pos.0 <= point.0
         && cube.pos.1 <= point.1
         && cube.pos.2 <= point.2
         && cube.pos.0 + cube.side_length > point.0
         && cube.pos.1 + cube.side_length > point.1
-        && cube.pos.2 + cube.side_length > point.2;
+        && cube.pos.2 + cube.side_length > point.2
 }
 
 fn bot_in_range(cube: &Cube, bot: &Bot) -> bool {
     let cube_range = cube.side_length - 1;
-    return point_in_cube(cube, &(bot.pos.0 + bot.radius, bot.pos.1, bot.pos.2))
+    point_in_cube(cube, &(bot.pos.0 + bot.radius, bot.pos.1, bot.pos.2))
         || point_in_cube(cube, &(bot.pos.0 - bot.radius, bot.pos.1, bot.pos.2))
         || point_in_cube(cube, &(bot.pos.0, bot.pos.1 + bot.radius, bot.pos.2))
         || point_in_cube(cube, &(bot.pos.0, bot.pos.1 - bot.radius, bot.pos.2))
@@ -95,7 +94,7 @@ fn bot_in_range(cube: &Cube, bot: &Bot) -> bool {
                 cube.pos.2 + cube_range,
             ),
             &bot.pos,
-        ) < bot.radius;
+        ) < bot.radius
 }
 
 fn bots_in_range(cube: &Cube, bots: &[Bot]) -> u64 {
@@ -105,7 +104,7 @@ fn bots_in_range(cube: &Cube, bots: &[Bot]) -> u64 {
 fn split_cube(cube: &Cube) -> [Cube; 8] {
     let new_side = cube.side_length / 2 + cube.side_length % 2;
     let (x, y, z) = cube.pos;
-    return [
+    [
         Cube {
             pos: cube.pos,
             side_length: new_side,
@@ -138,7 +137,7 @@ fn split_cube(cube: &Cube) -> [Cube; 8] {
             pos: (x + new_side, y + new_side, z + new_side),
             side_length: new_side,
         },
-    ];
+    ]
 }
 
 fn find_best_positions(bots: &[Bot]) -> Vec<Position> {
@@ -184,7 +183,7 @@ fn find_best_positions(bots: &[Bot]) -> Vec<Position> {
             current_cubes[0].side_length
         );
     }
-    return current_cubes.into_iter().map(|c| c.pos).collect();
+    current_cubes.into_iter().map(|c| c.pos).collect()
 }
 
 fn closest_to_origin(positions: &[Position]) -> Option<Position> {
@@ -196,8 +195,8 @@ fn closest_to_origin(positions: &[Position]) -> Option<Position> {
 
 fn main() -> Result<(), String> {
     let filename = env::args().nth(1).ok_or("No file name given.".to_owned())?;
-    let content = read_file(&Path::new(&filename)).map_err(|e| e.to_string())?;
-    let lines: Vec<&str> = content.split('\n').collect();
+    let content = read_to_string(Path::new(&filename)).map_err(|e| e.to_string())?;
+    let lines: Vec<&str> = content.lines().collect();
 
     let bots = parse_bots(&lines)?;
 
@@ -221,18 +220,10 @@ fn main() -> Result<(), String> {
     Ok(())
 }
 
-fn read_file(path: &Path) -> std::io::Result<String> {
-    let ifile = File::open(path)?;
-    let mut bufr = BufReader::new(ifile);
-    let mut result = String::with_capacity(2048);
-    bufr.read_to_string(&mut result)?;
-    return Ok(result);
-}
-
 fn parse_bots(lines: &[&str]) -> Result<Vec<Bot>, String> {
     lines
         .iter()
-        .filter(|l| l.len() > 0)
+        .filter(|l| !l.is_empty())
         .map(|l| parse_bot(l).ok_or_else(|| format!("Unable to parse line as nanobot: '{}'", l)))
         .collect()
 }
