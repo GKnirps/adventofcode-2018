@@ -2,8 +2,7 @@ use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::env;
 use std::fmt;
-use std::fs::File;
-use std::io::{BufReader, Read};
+use std::fs::read_to_string;
 use std::path::Path;
 
 static GOB_ATTACK_POWER: u32 = 3;
@@ -147,7 +146,7 @@ fn adjacent_enemies(
     if let Some(enemy) = cavern.get_entity(x, y + 1).filter(|e| e.side != side) {
         enemies.push((x, y + 1, enemy));
     }
-    return enemies;
+    enemies
 }
 
 impl fmt::Display for Cavern {
@@ -156,7 +155,7 @@ impl fmt::Display for Cavern {
             for x in 0..self.xs {
                 write!(f, "{}", self.tiles[x + y * self.xs])?;
             }
-            write!(f, "\n")?;
+            writeln!(f)?;
         }
         Ok(())
     }
@@ -194,10 +193,10 @@ fn shortest_path_to_enemy(
             break;
         }
 
-        for (ex, ey, entity) in adjacent_enemies(&cavern, current_entity.side, x, y) {
-            if !visited.contains_key(&(ex, ey)) {
+        for (ex, ey, entity) in adjacent_enemies(cavern, current_entity.side, x, y) {
+            if let std::collections::hash_map::Entry::Vacant(e) = visited.entry((ex, ey)) {
                 candidates.push((ex, ey, entity.id));
-                visited.insert((ex, ey), Some((x, y)));
+                e.insert(Some((x, y)));
                 enemy_distance = Some(distance);
             }
         }
@@ -227,7 +226,7 @@ fn shortest_path_to_enemy(
         prev_pos = Some(current_pos);
         current_pos = next_pos;
     }
-    return prev_pos;
+    prev_pos
 }
 
 fn get_attack_side_for_candidate(
@@ -247,7 +246,7 @@ fn get_attack_side_for_candidate(
     if visited.contains_key(&(x, y + 1)) {
         return Some((x, y + 1));
     }
-    return None;
+    None
 }
 
 fn get_best_candidate(
@@ -263,7 +262,7 @@ fn get_best_candidate(
                 .filter(|(_, (_, _, o_id))| id == o_id)
                 .map(|(index, _)| index)
                 .next()?;
-            return Some((cx, cy, order_index));
+            Some((cx, cy, order_index))
         })
         .min_by_key(|(_, _, index)| *index)
         .map(|(x, y, _)| (*x, *y))
@@ -283,7 +282,7 @@ fn best_target_in_range(
         .filter(|(_, _, e)| e.health == lowest_health)
         .map(|(x, y, e)| (*x, *y, e.id))
         .collect();
-    return get_best_candidate(&lowest_health_enemies, entities);
+    get_best_candidate(&lowest_health_enemies, entities)
 }
 
 fn next_round(mut cavern: Cavern, elf_attack_power: u32) -> (Cavern, bool) {
@@ -315,7 +314,7 @@ fn next_round(mut cavern: Cavern, elf_attack_power: u32) -> (Cavern, bool) {
         }
     }
 
-    return (cavern, true);
+    (cavern, true)
 }
 
 fn attack_tile(cavern: &mut Cavern, target_x: usize, target_y: usize, attack_power: u32) {
@@ -351,7 +350,7 @@ fn fight(mut cavern: Cavern, elf_attack_power: u32) -> (Cavern, u32) {
             rounds += 1;
         }
     }
-    return (cavern, rounds);
+    (cavern, rounds)
 }
 
 fn cheat_until_elves_win(cavern: Cavern) -> (Cavern, u32, u32) {
@@ -376,7 +375,7 @@ fn sum_health(cavern: &Cavern) -> u32 {
 
 fn main() -> Result<(), String> {
     let filename = env::args().nth(1).ok_or("No file name given.".to_owned())?;
-    let content = read_file(&Path::new(&filename)).map_err(|e| e.to_string())?;
+    let content = read_to_string(Path::new(&filename)).map_err(|e| e.to_string())?;
     let lines: Vec<&str> = content.split('\n').collect();
     let initial_cavern = parse_cavern(&lines)?;
 
@@ -392,20 +391,12 @@ fn main() -> Result<(), String> {
     Ok(())
 }
 
-fn read_file(path: &Path) -> std::io::Result<String> {
-    let ifile = File::open(path)?;
-    let mut bufr = BufReader::new(ifile);
-    let mut result = String::with_capacity(2048);
-    bufr.read_to_string(&mut result)?;
-    return Ok(result);
-}
-
 fn parse_cavern(lines: &[&str]) -> Result<Cavern, String> {
-    let ys = lines.iter().filter(|l| l.len() > 0).count();
+    let ys = lines.iter().filter(|l| !l.is_empty()).count();
     let xs = lines.iter().map(|l| l.len()).max().unwrap_or(0);
     let tiles: Vec<Tile> = lines
         .iter()
-        .filter(|l| l.len() > 0)
+        .filter(|l| !l.is_empty())
         .flat_map(|line| line.chars())
         .enumerate()
         .map(|(i, c)| parse_tile(c, i))
@@ -429,13 +420,13 @@ fn parse_cavern(lines: &[&str]) -> Result<Cavern, String> {
         .filter_map(|t| t.get_entity())
         .filter(|e| e.side == Side::Goblin)
         .count();
-    return Ok(Cavern {
+    Ok(Cavern {
         tiles,
         xs,
         ys,
         n_elves,
         n_goblins,
-    });
+    })
 }
 
 fn parse_tile(tile: char, id: usize) -> Tile {
@@ -691,7 +682,7 @@ mod test {
         assert_eq!(health_sum, expected_health);
         assert_eq!(power, expected_power);
 
-        return final_cavern;
+        final_cavern
     }
 
     #[test]
