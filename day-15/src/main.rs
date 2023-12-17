@@ -166,12 +166,7 @@ impl fmt::Display for Cavern {
 // if an enemy is on an adjacent tile, return the direction to that tile
 // if no path to any enemy is available, return None
 // if no entity is at the given position, return None
-fn shortest_path_to_enemy(
-    px: usize,
-    py: usize,
-    cavern: &Cavern,
-    read_order: &[(usize, usize, usize)],
-) -> Option<(usize, usize)> {
+fn shortest_path_to_enemy(px: usize, py: usize, cavern: &Cavern) -> Option<(usize, usize)> {
     let current_entity = cavern.get(px, py).and_then(|t| t.get_entity())?;
     // set of all visited positions with predecessors
     let mut visited: HashMap<(usize, usize), Option<(usize, usize)>> =
@@ -180,7 +175,7 @@ fn shortest_path_to_enemy(
     let mut queue: VecDeque<(usize, usize, usize)> =
         VecDeque::with_capacity(2 * (cavern.xs + cavern.ys));
     // candidates for the closest enemy (px, py, id)
-    let mut candidates: Vec<(usize, usize, usize)> = Vec::with_capacity(10);
+    let mut candidates: Vec<(usize, usize)> = Vec::with_capacity(10);
     // distance of the closest enemy
     let mut enemy_distance: Option<usize> = None;
 
@@ -193,9 +188,9 @@ fn shortest_path_to_enemy(
             break;
         }
 
-        for (ex, ey, entity) in adjacent_enemies(cavern, current_entity.side, x, y) {
+        for (ex, ey, _) in adjacent_enemies(cavern, current_entity.side, x, y) {
             if let std::collections::hash_map::Entry::Vacant(e) = visited.entry((ex, ey)) {
-                candidates.push((ex, ey, entity.id));
+                candidates.push((ex, ey));
                 e.insert(Some((x, y)));
                 enemy_distance = Some(distance);
             }
@@ -220,7 +215,7 @@ fn shortest_path_to_enemy(
     }
     // backtrack the path
     let mut prev_pos: Option<(usize, usize)> = None;
-    let (target_x, target_y) = get_best_candidate(&candidates, read_order)?;
+    let (target_x, target_y) = get_best_candidate(&candidates)?;
     let mut current_pos = get_attack_side_for_candidate(target_x, target_y, &visited)?;
     while let Some(next_pos) = visited.get(&current_pos).and_then(|p| *p) {
         prev_pos = Some(current_pos);
@@ -249,47 +244,35 @@ fn get_attack_side_for_candidate(
     None
 }
 
-fn get_best_candidate(
-    candidates: &[(usize, usize, usize)],
-    read_order: &[(usize, usize, usize)],
-) -> Option<(usize, usize)> {
+fn get_best_candidate(candidates: &[(usize, usize)]) -> Option<(usize, usize)> {
     candidates
         .iter()
-        .filter_map(|(cx, cy, id)| {
-            let order_index = read_order
-                .iter()
-                .enumerate()
-                .filter(|(_, (_, _, o_id))| id == o_id)
-                .map(|(index, _)| index)
-                .next()?;
-            Some((cx, cy, order_index))
-        })
-        .min_by_key(|(_, _, index)| *index)
-        .map(|(x, y, _)| (*x, *y))
+        .min_by(|(x1, y1), (x2, y2)| y1.cmp(y2).then(x1.cmp(x2)))
+        .map(|(x, y)| (*x, *y))
 }
 
-fn best_target_in_range(
-    cavern: &Cavern,
-    entities: &[(usize, usize, usize)],
-    x: usize,
-    y: usize,
-) -> Option<(usize, usize)> {
+fn best_target_in_range(cavern: &Cavern, x: usize, y: usize) -> Option<(usize, usize)> {
     let current_entity = cavern.get_entity(x, y)?;
     let adj_enemies = adjacent_enemies(cavern, current_entity.side, x, y);
     let lowest_health = adj_enemies.iter().map(|(_, _, e)| e.health).min()?;
-    let lowest_health_enemies: Vec<(usize, usize, usize)> = adj_enemies
+    let lowest_health_enemies: Vec<(usize, usize)> = adj_enemies
         .iter()
         .filter(|(_, _, e)| e.health == lowest_health)
-        .map(|(x, y, e)| (*x, *y, e.id))
+        .map(|(x, y, _)| (*x, *y))
         .collect();
-    get_best_candidate(&lowest_health_enemies, entities)
+    get_best_candidate(&lowest_health_enemies)
 }
 
 fn next_round(mut cavern: Cavern, elf_attack_power: u32) -> (Cavern, bool) {
     let entities = cavern.entities_in_reading_order();
 
-    for (x, y, _) in &entities {
+    for (x, y, id) in &entities {
         let attack_power = if let Some(entity) = cavern.get_entity(*x, *y) {
+            if entity.id != *id {
+                // entity died and a different entity is here now. This entity already had its
+                // turn, ignore it
+                continue;
+            }
             // only end the round prematurely if the unit looking for an enemy is still alive
             if cavern.n_goblins == 0 || cavern.n_elves == 0 {
                 return (cavern, false);
@@ -302,13 +285,11 @@ fn next_round(mut cavern: Cavern, elf_attack_power: u32) -> (Cavern, bool) {
             // unit is dead
             continue;
         };
-        if let Some((target_x, target_y)) = best_target_in_range(&cavern, &entities, *x, *y) {
+        if let Some((target_x, target_y)) = best_target_in_range(&cavern, *x, *y) {
             attack_tile(&mut cavern, target_x, target_y, attack_power);
-        } else if let Some((next_x, next_y)) = shortest_path_to_enemy(*x, *y, &cavern, &entities) {
+        } else if let Some((next_x, next_y)) = shortest_path_to_enemy(*x, *y, &cavern) {
             cavern.move_entity(*x, *y, next_x, next_y);
-            if let Some((target_x, target_y)) =
-                best_target_in_range(&cavern, &entities, next_x, next_y)
-            {
+            if let Some((target_x, target_y)) = best_target_in_range(&cavern, next_x, next_y) {
                 attack_tile(&mut cavern, target_x, target_y, attack_power);
             }
         }
