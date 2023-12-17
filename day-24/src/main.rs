@@ -11,11 +11,16 @@ fn main() -> Result<(), String> {
     let content = read_to_string(Path::new(&filename)).map_err(|e| e.to_string())?;
     let (immune_system, infection) = parse(&content)?;
 
-    if let Some(remaining_victors) = fight(immune_system, infection) {
+    if let Some((remaining_victors, _)) = fight(immune_system.clone(), infection.clone()) {
         println!("The remaining party has {remaining_victors} left.");
     } else {
         println!("The fighting has come to a stalemate.");
     }
+
+    let minimal_boosted_victors = find_minimal_required_boost(&immune_system, &infection);
+    println!(
+        "With a minimal winning boost, the immune system has {minimal_boosted_victors} units left"
+    );
 
     Ok(())
 }
@@ -54,7 +59,7 @@ impl Group<'_> {
     }
 }
 
-fn fight(mut immune_system: Vec<Group>, mut infection: Vec<Group>) -> Option<u32> {
+fn fight(mut immune_system: Vec<Group>, mut infection: Vec<Group>) -> Option<(u32, bool)> {
     let mut targets_immune_system: Vec<Option<usize>> = Vec::with_capacity(immune_system.len());
     let mut targets_infection: Vec<Option<usize>> = Vec::with_capacity(infection.len());
     let mut targeted_infection: HashSet<usize> = HashSet::with_capacity(infection.len());
@@ -186,7 +191,50 @@ fn fight(mut immune_system: Vec<Group>, mut infection: Vec<Group>) -> Option<u32
         }
         total_units = new_total_units;
     }
-    Some(total_units)
+    Some((total_units, !immune_system.is_empty()))
+}
+
+fn fight_boosted(
+    mut immune_system: Vec<Group>,
+    infection: Vec<Group>,
+    boost: u32,
+) -> Option<(u32, bool)> {
+    for group in &mut immune_system {
+        group.attack += boost;
+    }
+    fight(immune_system, infection)
+}
+
+fn find_minimal_required_boost(immune_system: &[Group], infection: &[Group]) -> u32 {
+    // assumption: a boost _is_ required
+    let mut lower: u32 = 0;
+    let mut upper: u32 = 16;
+
+    // first: find any boost that makes the immune system win
+    let mut outcome = fight_boosted(immune_system.to_vec(), infection.to_vec(), upper);
+    while !outcome.map(|(_, won)| won).unwrap_or(false) {
+        lower = upper;
+        upper *= 2;
+        outcome = fight_boosted(immune_system.to_vec(), infection.to_vec(), upper);
+    }
+    let mut upper_units_left = outcome.unwrap().0;
+
+    // then do a binary search to find the minimal required boost
+    while upper != lower + 1 {
+        let pivot = lower + (upper - lower) / 2;
+        let outcome = fight_boosted(immune_system.to_vec(), infection.to_vec(), pivot);
+        if let Some((units_left, won)) = outcome {
+            if won {
+                upper_units_left = units_left;
+                upper = pivot;
+            } else {
+                lower = pivot;
+            }
+        } else {
+            lower = pivot;
+        }
+    }
+    upper_units_left
 }
 
 fn parse(input: &str) -> Result<(Vec<Group>, Vec<Group>), String> {
@@ -293,6 +341,18 @@ Infection:
         let leftovers = fight(immune_system, infection);
 
         // then
-        assert_eq!(leftovers, Some(5216));
+        assert_eq!(leftovers, Some((5216, false)));
+    }
+
+    #[test]
+    fn find_minimal_required_boost_works_for_example() {
+        // given
+        let (immune_system, infection) = parse(EXAMPLE).expect("expected successful parsing");
+
+        // when
+        let leftovers = find_minimal_required_boost(&immune_system, &infection);
+
+        // then
+        assert_eq!(leftovers, 51);
     }
 }
